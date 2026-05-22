@@ -1,0 +1,116 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-notion-bg text-notion-text font-inter antialiased;
+  }
+  .dark body {
+    @apply bg-notion-bg-dark text-notion-text-dark;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply px-4 py-2 bg-notion-accent text-white rounded-btn font-medium text-sm
+           hover:opacity-90 transition-opacity duration-150 inline-flex items-center gap-2
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .dark .btn-primary {
+    @apply bg-notion-accent-dark;
+  }
+  .btn-secondary {
+    @apply px-4 py-2 bg-notion-surface text-notion-text rounded-btn font-medium text-sm
+           border border-notion-border hover:bg-gray-100 transition-colors duration-150
+           inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .dark .btn-secondary {
+    @apply bg-notion-surface-dark text-notion-text-dark border-notion-border-dark hover:bg-gray-800;
+  }
+  .btn-danger {
+    @apply px-4 py-2 bg-red-500 text-white rounded-btn font-medium text-sm
+           hover:bg-red-600 transition-colors duration-150 inline-flex items-center gap-2
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .card {
+    @apply bg-white rounded-card border border-notion-border p-6;
+  }
+  .dark .card {
+    @apply bg-notion-bg-dark border-notion-border-dark;
+  }
+  .input-field {
+    @apply w-full px-3 py-2 text-sm border border-notion-border rounded-btn
+           bg-white text-notion-text placeholder-notion-muted
+           focus:outline-none focus:ring-2 focus:ring-notion-accent/30 focus:border-notion-accent
+           transition-colors duration-150;
+  }
+  .dark .input-field {
+    @apply bg-notion-surface-dark border-notion-border-dark text-notion-text-dark
+           placeholder-notion-muted-dark focus:ring-notion-accent-dark/30 focus:border-notion-accent-dark;
+  }
+  .select-field {
+    @apply px-3 py-2 text-sm border border-notion-border rounded-btn
+           bg-white text-notion-text
+           focus:outline-none focus:ring-2 focus:ring-notion-accent/30 focus:border-notion-accent
+           transition-colors duration-150;
+  }
+  .dark .select-field {
+    @apply bg-notion-surface-dark border-notion-border-dark text-notion-text-dark
+           focus:ring-notion-accent-dark/30 focus:border-notion-accent-dark;
+  }
+  .badge {
+    @apply inline-flex items-center px-2 py-0.5 rounded-badge text-xs font-medium;
+  }
+  .badge-type {
+    @apply bg-notion-accent/10 text-notion-accent;
+  }
+  .dark .badge-type {
+    @apply bg-notion-accent-dark/15 text-notion-accent-dark;
+  }
+  .badge-category {
+    @apply bg-gray-100 text-gray-600;
+  }
+  .dark .badge-category {
+    @apply bg-gray-800 text-gray-400;
+  }
+}
+
+/* Toast animation */
+@keyframes toast-in {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+@keyframes toast-out {
+  from { transform: translateX(0); opacity: 1; }
+  to { transform: translateX(100%); opacity: 0; }
+}
+.toast-enter { animation: toast-in 0.3s ease-out; }
+.toast-leave { animation: toast-out 0.3s ease-in; }
+
+/* Search highlight */
+mark.search-highlight {
+  background: rgba(255, 213, 0, 0.4);
+  color: inherit;
+  padding: 1px 2px;
+  border-radius: 3px;
+}
+.dark mark.search-highlight {
+  background: rgba(255, 213, 0, 0.25);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+.dark ::-webkit-scrollbar-thumb { background: #4b5563; }
+
+/* JSON syntax highlighting */
+.json-viewer .json-key { color: #7c3aed; }
+.json-viewer .json-str { color: #059669; }
+.json-viewer .json-num { color: #d97706; }
+.json-viewer .json-bool { color: #dc2626; }
+.dark .json-viewer .json-key { color: #a78bfa; }
+.dark .json-viewer .json-str { color: #34d399; }
+.dark .json-viewer .json-num { color: #fbbf24; }
+.dark .json-viewer .json-bool { color: #f87171; }
