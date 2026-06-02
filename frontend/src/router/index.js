@@ -38,6 +38,12 @@ const routes = [
     meta: { title: '回收站' }
   },
   {
+    path: '/quiz',
+    name: 'Quiz',
+    component: () => import('@/views/Quiz.vue'),
+    meta: { title: '刷题' }
+  },
+  {
     path: '/ai-settings',
     name: 'AiSettings',
     component: () => import('@/views/AiSettings.vue'),

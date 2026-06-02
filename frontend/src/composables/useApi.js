@@ -44,6 +44,16 @@ export function useApi() {
     getStats: (days) => request(`/api/stats${days ? `?days=${days}` : ''}`),
     refresh: () => request('/api/refresh'),
 
+    // Quiz
+    getQuizQuestions: (params = {}) => {
+      const qs = new URLSearchParams()
+      Object.entries(params).forEach(([k, v]) => {
+        if (v !== undefined && v !== null && v !== '') qs.set(k, v)
+      })
+      return request(`/api/quiz/questions?${qs}`)
+    },
+    checkQuizAnswer: (id, answer) => request('/api/quiz/check', { method: 'POST', body: JSON.stringify({ id, answer }) }),
+
     // Categories
     getCategories: () => request('/api/categories'),
     createCategory: (name, score, notes) => request('/api/categories', { method: 'POST', body: JSON.stringify({ name, score, notes }) }),

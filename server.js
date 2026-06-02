@@ -222,6 +222,7 @@ const databaseRouter = require('./routes/database')(getDb, setDb, helpers, {
   config, DEFAULT_DB_PATH, UPLOADS_DIR, TMP_DIR, isSQLiteFile, openDatabase, getDbStats, loadConfig, saveConfig,
 });
 const externalRouter = require('./routes/external')(getDb, helpers);
+const quizRouter = require('./routes/quiz')(getDb, helpers);
 
 app.use('/api/questions', questionsRouter);
 app.use('/api/trash', trashRouter);
@@ -233,6 +234,7 @@ app.use('/api/ai', aiRouter);
 app.use('/api/duplicates', duplicatesRouter);
 app.use('/api/database', databaseRouter);
 app.use('/api/external', externalRouter);
+app.use('/api/quiz', quizRouter);
 
 // GET /api/refresh — merge stats + categories in one call
 app.get('/api/refresh', (req, res) => {
