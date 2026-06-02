@@ -3,16 +3,15 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useApi } from '@/composables/useApi'
 import { useToastStore } from '@/stores/toast'
-import { useConfirmStore } from '@/stores/confirm'
 import { usePagination } from '@/composables/usePagination'
 import PaginationBar from '@/components/PaginationBar.vue'
+import SearchableSelect from '@/components/SearchableSelect.vue'
 
 defineOptions({ name: 'Categories' })
 
 const router = useRouter()
 const api = useApi()
 const toast = useToastStore()
-const confirm = useConfirmStore()
 
 const categories = ref([])
 const loading = ref(true)
@@ -21,6 +20,19 @@ const newScore = ref('')
 const editingId = ref(null)
 const editingName = ref('')
 const editingScore = ref(null)
+
+// Move dialog
+const moveVisible = ref(false)
+const moveCat = ref(null)
+const moveTarget = ref('')
+const moveCustom = ref('')
+const moveLoading = ref(false)
+
+// Delete confirm dialog
+const deleteVisible = ref(false)
+const deleteCat = ref(null)
+const deleteConfirmInput = ref('')
+const deleteLoading = ref(false)
 
 // Search & Pagination
 const searchQuery = ref('')
@@ -121,20 +133,63 @@ function goToQuestions(cat) {
   router.push({ path: '/questions', query: { category: cat.name } })
 }
 
-async function deleteCategory(cat) {
-  const ok = await confirm.show({
-    title: '删除分类',
-    message: `确定要删除「${cat.name}」吗？该分类下的 ${cat.question_count} 道题目将被移到"默认"分类。`,
-    confirmText: '删除',
-    danger: true,
-  })
-  if (!ok) return
+function openMove(cat) {
+  moveCat.value = cat
+  moveTarget.value = ''
+  moveCustom.value = ''
+  moveVisible.value = true
+}
+
+function closeMove() {
+  moveVisible.value = false
+  moveCat.value = null
+}
+
+async function doMove() {
+  const target = moveCustom.value.trim() || moveTarget.value
+  if (!target) {
+    toast.error('请选择或输入目标分类')
+    return
+  }
+  moveLoading.value = true
   try {
-    await api.deleteCategory(cat.id)
-    toast.success('删除成功')
+    const res = await api.moveCategory(moveCat.value.id, target)
+    toast.success(res.message)
+    closeMove()
     loadCategories()
   } catch (e) {
     // handled
+  } finally {
+    moveLoading.value = false
+  }
+}
+
+function openDelete(cat) {
+  deleteCat.value = cat
+  deleteConfirmInput.value = ''
+  deleteVisible.value = true
+}
+
+function closeDelete() {
+  deleteVisible.value = false
+  deleteCat.value = null
+}
+
+async function doDelete() {
+  if (deleteConfirmInput.value.trim() !== deleteCat.value.name) {
+    toast.error('输入的分类名称不匹配')
+    return
+  }
+  deleteLoading.value = true
+  try {
+    const res = await api.deleteCategory(deleteCat.value.id, deleteCat.value.name)
+    toast.success(res.message)
+    closeDelete()
+    loadCategories()
+  } catch (e) {
+    // handled
+  } finally {
+    deleteLoading.value = false
   }
 }
 </script>
@@ -252,12 +307,17 @@ async function deleteCategory(cat) {
                 <span class="inline-flex items-center px-2.5 py-1 rounded-badge bg-notion-surface dark:bg-notion-surface-dark text-xs font-medium text-notion-text dark:text-notion-text-dark">
                   {{ cat.question_count }}
                 </span>
+                <button @click="openMove(cat)" class="p-1.5 rounded-btn hover:bg-blue-50 dark:hover:bg-blue-900/20 text-notion-muted dark:text-notion-muted-dark hover:text-blue-500 transition-colors" title="移动题目">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"/>
+                  </svg>
+                </button>
                 <button @click="startEdit(cat)" class="p-1.5 rounded-btn hover:bg-gray-100 dark:hover:bg-gray-800 text-notion-muted dark:text-notion-muted-dark transition-colors" title="编辑">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                   </svg>
                 </button>
-                <button @click="deleteCategory(cat)" class="p-1.5 rounded-btn hover:bg-red-50 dark:hover:bg-red-900/20 text-notion-muted dark:text-notion-muted-dark hover:text-red-500 transition-colors" title="删除">
+                <button @click="openDelete(cat)" class="p-1.5 rounded-btn hover:bg-red-50 dark:hover:bg-red-900/20 text-notion-muted dark:text-notion-muted-dark hover:text-red-500 transition-colors" title="删除">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                   </svg>
@@ -291,5 +351,85 @@ async function deleteCategory(cat) {
         />
       </template>
     </div>
+
+    <!-- Move Dialog -->
+    <Teleport to="body">
+      <Transition name="fade">
+        <div v-if="moveVisible" class="fixed inset-0 z-[9998] flex items-center justify-center p-4">
+          <div class="absolute inset-0 bg-black/50" @click="closeMove" />
+          <div class="relative bg-white dark:bg-gray-800 rounded-card shadow-xl border border-notion-border dark:border-notion-border-dark max-w-md w-full p-6">
+            <h3 class="text-lg font-semibold text-notion-text dark:text-notion-text-dark mb-2">移动题目</h3>
+            <p class="text-sm text-notion-muted dark:text-notion-muted-dark mb-4">
+              将「{{ moveCat?.name }}」下的 <span class="font-medium text-notion-text dark:text-notion-text-dark">{{ moveCat?.question_count }}</span> 道题目移动至：
+            </p>
+            <div class="space-y-3 mb-6">
+              <SearchableSelect
+                :modelValue="moveTarget"
+                @update:modelValue="(v) => { moveTarget = v; moveCustom = '' }"
+                :options="categories.filter(c => c.id !== moveCat?.id).map(c => ({ label: c.name, value: c.name }))"
+                placeholder="选择已有分类..."
+              />
+              <div class="flex items-center gap-2">
+                <div class="h-px flex-1 bg-notion-border dark:bg-notion-border-dark" />
+                <span class="text-xs text-notion-muted dark:text-notion-muted-dark">或</span>
+                <div class="h-px flex-1 bg-notion-border dark:bg-notion-border-dark" />
+              </div>
+              <input
+                v-model="moveCustom"
+                @input="moveTarget = ''"
+                type="text"
+                class="input-field w-full"
+                placeholder="输入新分类名称..."
+              />
+            </div>
+            <div class="flex justify-end gap-3">
+              <button @click="closeMove" class="btn-secondary">取消</button>
+              <button @click="doMove" :disabled="moveLoading" class="btn-primary">
+                {{ moveLoading ? '移动中...' : '移动' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <!-- Delete Confirm Dialog -->
+    <Teleport to="body">
+      <Transition name="fade">
+        <div v-if="deleteVisible" class="fixed inset-0 z-[9998] flex items-center justify-center p-4">
+          <div class="absolute inset-0 bg-black/50" @click="closeDelete" />
+          <div class="relative bg-white dark:bg-gray-800 rounded-card shadow-xl border border-notion-border dark:border-notion-border-dark max-w-md w-full p-6">
+            <h3 class="text-lg font-semibold text-red-500 mb-2">删除分类</h3>
+            <p class="text-sm text-notion-muted dark:text-notion-muted-dark mb-1">
+              确定要删除分类「<span class="font-medium text-notion-text dark:text-notion-text-dark">{{ deleteCat?.name }}</span>」吗？
+            </p>
+            <p class="text-sm text-notion-muted dark:text-notion-muted-dark mb-4">
+              该分类下的 <span class="font-medium text-red-500">{{ deleteCat?.question_count }}</span> 道题目将被移至回收站，此操作不可撤销。
+            </p>
+            <p class="text-sm text-notion-text dark:text-notion-text-dark mb-2">
+              请输入分类名称 <span class="font-mono font-medium text-red-500">{{ deleteCat?.name }}</span> 以确认删除：
+            </p>
+            <input
+              v-model="deleteConfirmInput"
+              type="text"
+              class="input-field w-full mb-6"
+              :placeholder="deleteCat?.name"
+              @keyup.enter="doDelete"
+            />
+            <div class="flex justify-end gap-3">
+              <button @click="closeDelete" class="btn-secondary">取消</button>
+              <button @click="doDelete" :disabled="deleteLoading || deleteConfirmInput.trim() !== deleteCat?.name" class="btn-danger">
+                {{ deleteLoading ? '删除中...' : '确认删除' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
+
+<style scoped>
+.fade-enter-active, .fade-leave-active { transition: opacity 0.2s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
+</style>

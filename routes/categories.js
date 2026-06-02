@@ -79,6 +79,38 @@ module.exports = function (getDb, { sendError, localNow }) {
     } catch (err) { sendError(res, err, 'PUT /api/categories/:id'); }
   });
 
+  // POST /api/categories/:id/move
+  router.post('/:id/move', (req, res) => {
+    try {
+      const db = getDb();
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: '无效的分类 ID' });
+
+      const { target } = req.body;
+      if (!target || typeof target !== 'string' || !target.trim()) {
+        return res.status(400).json({ error: '请选择或输入目标分类' });
+      }
+      const targetName = target.trim();
+      if (targetName.length > 50) return res.status(400).json({ error: '分类名称过长' });
+
+      const cat = db.prepare("SELECT * FROM data_categories WHERE id = ?").get(id);
+      if (!cat) return res.status(404).json({ error: '分类不存在' });
+      if (cat.name === targetName) return res.status(400).json({ error: '目标分类与当前分类相同' });
+
+      const moveCategory = db.transaction(() => {
+        // ensure target category exists
+        let targetCat = db.prepare("SELECT id FROM data_categories WHERE name = ?").get(targetName);
+        if (!targetCat) {
+          db.prepare("INSERT INTO data_categories (name, created_at) VALUES (?, ?)").run(targetName, localNow());
+        }
+        const result = db.prepare("UPDATE data_questions SET category = ?, updated_at = ? WHERE category = ? AND deleted_at IS NULL").run(targetName, localNow(), cat.name);
+        return result.changes;
+      });
+      const moved = moveCategory();
+      res.json({ message: `已将 ${moved} 道题目移至「${targetName}」`, moved });
+    } catch (err) { sendError(res, err, 'POST /api/categories/:id/move'); }
+  });
+
   // DELETE /api/categories/:id
   router.delete('/:id', (req, res) => {
     try {
@@ -86,15 +118,18 @@ module.exports = function (getDb, { sendError, localNow }) {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ error: '无效的分类 ID' });
 
+      const { confirm } = req.body;
       const cat = db.prepare("SELECT * FROM data_categories WHERE id = ?").get(id);
       if (!cat) return res.status(404).json({ error: '分类不存在' });
-      db.prepare("UPDATE data_questions SET category = '默认' WHERE category = ? AND deleted_at IS NULL").run(cat.name);
-      db.prepare("DELETE FROM data_categories WHERE id = ?").run(id);
-      const def = db.prepare("SELECT id FROM data_categories WHERE name = '默认'").get();
-      if (!def) {
-        db.prepare("INSERT INTO data_categories (name, created_at) VALUES ('默认', ?)").run(localNow());
+
+      if (confirm !== cat.name) {
+        return res.status(400).json({ error: 'confirm_required', message: `请输入分类名称「${cat.name}」以确认删除` });
       }
-      res.json({ message: '删除成功' });
+
+      const now = localNow();
+      const delResult = db.prepare("UPDATE data_questions SET deleted_at = ? WHERE category = ? AND deleted_at IS NULL").run(now, cat.name);
+      db.prepare("DELETE FROM data_categories WHERE id = ?").run(id);
+      res.json({ message: `已删除分类「${cat.name}」并将 ${delResult.changes} 道题目移至回收站`, deleted: delResult.changes });
     } catch (err) { sendError(res, err, 'DELETE /api/categories/:id'); }
   });
 

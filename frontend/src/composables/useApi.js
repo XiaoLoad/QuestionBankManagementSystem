@@ -51,7 +51,8 @@ export function useApi() {
       const body = typeof nameOrBody === 'object' ? nameOrBody : { name: nameOrBody };
       return request(`/api/categories/${id}`, { method: 'PUT', body: JSON.stringify(body) });
     },
-    deleteCategory: (id) => request(`/api/categories/${id}`, { method: 'DELETE' }),
+    moveCategory: (id, target) => request(`/api/categories/${id}/move`, { method: 'POST', body: JSON.stringify({ target }) }),
+    deleteCategory: (id, confirm) => request(`/api/categories/${id}`, { method: 'DELETE', body: JSON.stringify({ confirm }) }),
 
     // Backup
     downloadBackup: () => {
