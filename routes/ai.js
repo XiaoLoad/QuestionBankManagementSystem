@@ -7,7 +7,7 @@ const BUILT_IN_PROVIDERS = [
   { name: '豆包', base_url: 'https://ark.cn-beijing.volces.com/api/v3' },
 ];
 
-module.exports = function (getDb, { md5, sendError, localNow }) {
+module.exports = function (getDb, { md5, sendError, localNow, extractImageUrls, stripImageUrls, buildUserContent }) {
   const router = express.Router();
 
   // GET /api/ai/presets
@@ -192,6 +192,13 @@ module.exports = function (getDb, { md5, sendError, localNow }) {
       const controller = new AbortController();
       const timeoutMs = Math.max(10000, Math.min(600000, parseInt(timeout) || 120000));
       const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+      // 检测题目中的图片 URL，构建 multimodal content
+      const imageUrls = extractImageUrls(content);
+      const userContent = imageUrls.length > 0
+        ? buildUserContent(stripImageUrls(prompt), imageUrls)
+        : prompt;
+
       let response;
       try {
         response = await fetch(url, {
@@ -204,7 +211,7 @@ module.exports = function (getDb, { md5, sendError, localNow }) {
             model: provider.model,
             messages: [
               { role: 'system', content: '你是一个答题助手，只输出JSON格式的结果。' },
-              { role: 'user', content: prompt },
+              { role: 'user', content: userContent },
             ],
             temperature: 0.1,
             stream: false,

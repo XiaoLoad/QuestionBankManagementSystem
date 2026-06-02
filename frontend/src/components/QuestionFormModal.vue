@@ -14,7 +14,10 @@ const form = reactive({
   options: '',
   answers: '',
   category: '默认',
+  images: [],
 })
+
+const newImageUrl = ref('')
 
 const isEdit = computed(() => !!props.question)
 
@@ -25,11 +28,24 @@ onMounted(() => {
     form.options = Array.isArray(props.question.options) ? props.question.options.join('\n') : (props.question.options || '')
     form.answers = Array.isArray(props.question.answers) ? props.question.answers.join('\n') : (props.question.answers || '')
     form.category = props.question.category || '默认'
+    form.images = Array.isArray(props.question.images) ? [...props.question.images] : []
   }
 })
 
 const needsOptions = computed(() => ['单选题', '多选题'].includes(form.type))
 const needsAnswers = computed(() => form.type !== '')
+
+function addImageUrl() {
+  const url = newImageUrl.value.trim()
+  if (!url) return
+  if (!/^https?:\/\/.+/.test(url)) return
+  form.images.push(url)
+  newImageUrl.value = ''
+}
+
+function removeImage(index) {
+  form.images.splice(index, 1)
+}
 
 function handleSubmit() {
   if (!form.type || !form.content.trim()) return
@@ -51,6 +67,8 @@ function handleSubmit() {
   } else {
     data.answers = null
   }
+
+  data.images = form.images.length > 0 ? form.images : null
 
   emit('submit', data)
 }
@@ -112,6 +130,32 @@ function handleSubmit() {
             <select v-model="form.category" class="select-field w-full">
               <option v-for="c in categories" :key="c.id" :value="c.name">{{ c.name }}</option>
             </select>
+          </div>
+
+          <!-- Images -->
+          <div>
+            <label class="block text-sm font-medium text-notion-text dark:text-notion-text-dark mb-1.5">题目图片</label>
+            <div v-if="form.images.length > 0" class="space-y-2 mb-3">
+              <div v-for="(url, i) in form.images" :key="i" class="flex items-center gap-2">
+                <img :src="url" class="w-16 h-12 object-cover rounded border border-notion-border dark:border-notion-border-dark flex-shrink-0" @error="(e) => e.target.style.display='none'" />
+                <span class="flex-1 text-xs text-notion-muted dark:text-notion-muted-dark truncate">{{ url }}</span>
+                <button type="button" @click="removeImage(i)" class="p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-notion-muted hover:text-red-500 transition-colors flex-shrink-0">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div class="flex gap-2">
+              <input
+                v-model="newImageUrl"
+                type="text"
+                class="input-field flex-1"
+                placeholder="输入图片 URL..."
+                @keyup.enter.prevent="addImageUrl"
+              />
+              <button type="button" @click="addImageUrl" class="btn-secondary flex-shrink-0">添加</button>
+            </div>
           </div>
 
           <!-- Actions -->

@@ -121,6 +121,10 @@ function renderOptions(options) {
   try { return JSON.parse(options) } catch { return [options] }
 }
 
+function openImage(url) {
+  window.open(url, '_blank')
+}
+
 function renderAnswers(answers) {
   if (!answers) return []
   if (Array.isArray(answers)) return answers
@@ -137,6 +141,7 @@ function answersMatch(aiAnswers, currentAnswers) {
   const b = [...normalizeAnswer(curArr, options)].sort()
   return JSON.stringify(a) === JSON.stringify(b)
 }
+
 </script>
 
 <template>
@@ -199,6 +204,22 @@ function answersMatch(aiAnswers, currentAnswers) {
         <div class="mb-6">
           <h3 class="text-xs font-medium text-notion-muted dark:text-notion-muted-dark uppercase tracking-wider mb-2">题目内容</h3>
           <p class="text-notion-text dark:text-notion-text-dark leading-relaxed whitespace-pre-wrap">{{ question.content }}</p>
+        </div>
+
+        <!-- Images -->
+        <div v-if="question.images && question.images.length > 0" class="mb-6">
+          <h3 class="text-xs font-medium text-notion-muted dark:text-notion-muted-dark uppercase tracking-wider mb-2">题目图片</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <img
+              v-for="(url, i) in question.images"
+              :key="i"
+              :src="url"
+              class="w-full rounded-btn border border-notion-border dark:border-notion-border-dark cursor-pointer hover:opacity-90 transition-opacity"
+              loading="lazy"
+              @click="openImage(url)"
+              @error="(e) => e.target.style.display='none'"
+            />
+          </div>
         </div>
 
         <!-- Options -->

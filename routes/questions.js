@@ -30,6 +30,7 @@ module.exports = function (getDb, { md5, safeParse, sendError, localNow }) {
         ...row,
         options: row.options ? safeParse(row.options) : null,
         answers: row.answers ? safeParse(row.answers) : null,
+        images: row.images ? safeParse(row.images) : [],
       }));
       res.json({ items, total: countRow.total, page: p, pageSize: ps, totalPages: Math.ceil(countRow.total / ps) });
     } catch (err) { sendError(res, err, 'GET /api/questions'); }
@@ -45,6 +46,7 @@ module.exports = function (getDb, { md5, safeParse, sendError, localNow }) {
       if (!row) return res.status(404).json({ error: '题目不存在' });
       row.options = row.options ? safeParse(row.options) : null;
       row.answers = row.answers ? safeParse(row.answers) : null;
+      row.images = row.images ? safeParse(row.images) : [];
       res.json(row);
     } catch (err) { sendError(res, err, 'GET /api/questions/:id'); }
   });
@@ -53,7 +55,7 @@ module.exports = function (getDb, { md5, safeParse, sendError, localNow }) {
   router.post('/', (req, res) => {
     try {
       const db = getDb();
-      const { type, content, options, answers, right_status = 0, category = '默认', force = false } = req.body;
+      const { type, content, options, answers, right_status = 0, category = '默认', images, force = false } = req.body;
 
       const errors = validateQuestion(req.body);
       if (errors.length > 0) return res.status(400).json({ error: errors[0] });
@@ -70,13 +72,14 @@ module.exports = function (getDb, { md5, safeParse, sendError, localNow }) {
         const now = localNow();
         const hash = md5(`${type}-${content.trim()}`);
         const result = db.prepare(
-          `INSERT INTO data_questions (created_at, updated_at, md5, type, content, options, answers, right_status, category)
-           VALUES (@created_at, @updated_at, @md5, @type, @content, @options, @answers, @right_status, @category)`
+          `INSERT INTO data_questions (created_at, updated_at, md5, type, content, options, answers, right_status, category, images)
+           VALUES (@created_at, @updated_at, @md5, @type, @content, @options, @answers, @right_status, @category, @images)`
         ).run({
           created_at: now, updated_at: now, md5: hash, type, content: content.trim(),
           options: options ? Buffer.from(JSON.stringify(options)) : null,
           answers: answers ? Buffer.from(JSON.stringify(answers)) : null,
           right_status, category,
+          images: images && images.length > 0 ? JSON.stringify(images) : null,
         });
         return { id: result.lastInsertRowid, message: '添加成功' };
       });
@@ -110,7 +113,7 @@ module.exports = function (getDb, { md5, safeParse, sendError, localNow }) {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ error: '无效的题目 ID' });
 
-      const { type, content, options, answers, right_status, category, force = false } = req.body;
+      const { type, content, options, answers, right_status, category, images, force = false } = req.body;
       const existing = db.prepare('SELECT * FROM data_questions WHERE id = ? AND deleted_at IS NULL').get(id);
       if (!existing) return res.status(404).json({ error: '题目不存在' });
 
@@ -136,7 +139,7 @@ module.exports = function (getDb, { md5, safeParse, sendError, localNow }) {
         const now = localNow();
         db.prepare(
           `UPDATE data_questions SET updated_at=@updated_at, md5=@md5, type=@type, content=@content,
-           options=@options, answers=@answers, right_status=@right_status, category=@category WHERE id=@id`
+           options=@options, answers=@answers, right_status=@right_status, category=@category, images=@images WHERE id=@id`
         ).run({
           id, updated_at: now,
           md5: (content || type) ? md5(`${newType}-${newContent}`) : existing.md5,
@@ -145,6 +148,7 @@ module.exports = function (getDb, { md5, safeParse, sendError, localNow }) {
           answers: answers !== undefined ? (answers ? Buffer.from(JSON.stringify(answers)) : null) : existing.answers,
           right_status: right_status !== undefined ? right_status : existing.right_status,
           category: category !== undefined ? category : (existing.category || '默认'),
+          images: images !== undefined ? (images && images.length > 0 ? JSON.stringify(images) : null) : existing.images,
         });
         return { message: '更新成功' };
       });

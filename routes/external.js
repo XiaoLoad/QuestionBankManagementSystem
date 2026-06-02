@@ -29,7 +29,7 @@ class Semaphore {
   get waiting() { return this._queue.length; }
 }
 
-module.exports = function (getDb, { md5, safeParse, sendError, localNow }) {
+module.exports = function (getDb, { md5, safeParse, sendError, localNow, extractImageUrls, stripImageUrls, buildUserContent }) {
   const router = express.Router();
 
   // CORS middleware for all external routes (OCS/yatori cross-origin requests)
@@ -227,6 +227,12 @@ module.exports = function (getDb, { md5, safeParse, sendError, localNow }) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
+    // 检测题目中的图片 URL，构建 multimodal content
+    const imageUrls = extractImageUrls(content);
+    const userContent = imageUrls.length > 0
+      ? buildUserContent(stripImageUrls(prompt), imageUrls)
+      : prompt;
+
     try {
       const response = await fetch(url, {
         method: 'POST',
@@ -238,7 +244,7 @@ module.exports = function (getDb, { md5, safeParse, sendError, localNow }) {
           model: provider.model,
           messages: [
             { role: 'system', content: '你是一个答题助手，只输出JSON格式的结果。' },
-            { role: 'user', content: prompt },
+            { role: 'user', content: userContent },
           ],
           temperature: 0.1,
           stream: false,
@@ -406,12 +412,17 @@ module.exports = function (getDb, { md5, safeParse, sendError, localNow }) {
         normalizedOpts = null;
       }
 
+      // 提取图片 URL，从 content 中剥离，单独存入 images 字段
+      const imageUrls = extractImageUrls(normalizedContent);
+      const cleanContent = imageUrls.length > 0 ? stripImageUrls(normalizedContent) : normalizedContent;
+
       db.prepare(`
-        INSERT INTO data_questions (created_at, updated_at, md5, type, content, options, answers, right_status, category)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 0, '默认')
-      `).run(now, now, hash, normalizedType, normalizedContent,
+        INSERT INTO data_questions (created_at, updated_at, md5, type, content, options, answers, right_status, category, images)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 0, '默认', ?)
+      `).run(now, now, hash, normalizedType, cleanContent,
         normalizedOpts ? JSON.stringify(normalizedOpts) : null,
-        JSON.stringify(answers));
+        JSON.stringify(answers),
+        imageUrls.length > 0 ? JSON.stringify(imageUrls) : null);
     } catch (e) {
       console.error('[external] 自动入库失败:', e.message);
     }

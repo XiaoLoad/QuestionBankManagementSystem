@@ -2,7 +2,7 @@ const express = require('express');
 const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
-const { localNow, safeParse, md5, sendError } = require('./utils');
+const { localNow, safeParse, md5, sendError, extractImageUrls, stripImageUrls, buildUserContent } = require('./utils');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -68,9 +68,13 @@ function initDatabase(db) {
       options     BLOB,
       answers     BLOB,
       right_status INTEGER DEFAULT 0,
-      category    TEXT DEFAULT '默认'
+      category    TEXT DEFAULT '默认',
+      images      TEXT
     )`);
   } catch {}
+
+  // Migration: add images column
+  try { db.exec(`ALTER TABLE data_questions ADD COLUMN images TEXT`); } catch {}
 
   // Ensure data_categories table exists WITH score column
   try {
@@ -204,7 +208,7 @@ app.use((req, res, next) => {
 });
 
 // ========== Routes ==========
-const helpers = { md5, safeParse, sendError, localNow };
+const helpers = { md5, safeParse, sendError, localNow, extractImageUrls, stripImageUrls, buildUserContent };
 
 const questionsRouter = require('./routes/questions')(getDb, helpers);
 const trashRouter = require('./routes/trash')(getDb, helpers);

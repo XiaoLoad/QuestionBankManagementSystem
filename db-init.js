@@ -38,7 +38,8 @@ db.exec(`
     options     BLOB,
     answers     BLOB,
     right_status INTEGER DEFAULT 0,
-    category    TEXT DEFAULT '默认'
+    category    TEXT DEFAULT '默认',
+    images      TEXT
   );
 
   CREATE TABLE IF NOT EXISTS data_categories (
