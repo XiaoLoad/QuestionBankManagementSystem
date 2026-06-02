@@ -13,7 +13,16 @@ module.exports = function (getDb, { safeParse, sendError }) {
       let where = 'WHERE deleted_at IS NULL';
       const params = {};
       if (category && category !== '全部') { where += ' AND category = @category'; params.category = category; }
-      if (type && type !== '全部') { where += ' AND type = @type'; params.type = type; }
+      if (type) {
+        const types = String(type).split(',').filter(Boolean);
+        if (types.length === 1) {
+          where += ' AND type = @type'; params.type = types[0];
+        } else if (types.length > 1) {
+          const placeholders = types.map((_, i) => `@type${i}`).join(',');
+          where += ` AND type IN (${placeholders})`;
+          types.forEach((t, i) => { params[`type${i}`] = t; });
+        }
+      }
 
       const order = mode === 'random' ? 'RANDOM()' : 'id ASC';
       const rows = db.prepare(`SELECT id, type, content, options, category, images FROM data_questions ${where} ORDER BY ${order} LIMIT @limit`).all({ ...params, limit: lim });

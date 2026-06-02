@@ -5,7 +5,9 @@
   "scripts": {
     "db:init": "node db-init.js",
     "prestart": "node db-init.js",
-    "start": "node server.js"
+    "start": "node server.js",
+    "build:web": "cd frontend && yarn build",
+    "build": "yarn build:web && node server.js"
   },
   "dependencies": {
     "better-sqlite3": "^11.0.0",

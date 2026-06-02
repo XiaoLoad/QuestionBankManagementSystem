@@ -17,7 +17,7 @@ const loading = ref(false)
 // Setup
 const categories = ref([])
 const selectedCategory = ref('')
-const selectedType = ref('')
+const selectedTypes = ref([])
 const selectedMode = ref('random')
 const questionLimit = ref(20)
 const autoAdvance = ref(true)
@@ -48,7 +48,7 @@ async function startQuiz() {
   try {
     const res = await api.getQuizQuestions({
       category: selectedCategory.value,
-      type: selectedType.value,
+      type: selectedTypes.value.length > 0 ? selectedTypes.value.join(',') : '',
       mode: selectedMode.value,
       limit: questionLimit.value,
     })
@@ -274,11 +274,21 @@ function getBoolClass(val) {
           />
         </div>
         <div>
-          <label class="block text-sm font-medium text-notion-text dark:text-notion-text-dark mb-1.5">题型</label>
-          <select v-model="selectedType" class="select-field w-full">
-            <option value="">全部题型</option>
-            <option v-for="t in QUESTION_TYPES" :key="t" :value="t">{{ t }}</option>
-          </select>
+          <label class="block text-sm font-medium text-notion-text dark:text-notion-text-dark mb-1.5">题型（可多选，不选则全部）</label>
+          <div class="flex flex-wrap gap-2">
+            <button
+              v-for="t in QUESTION_TYPES"
+              :key="t"
+              type="button"
+              @click="selectedTypes.includes(t) ? selectedTypes.splice(selectedTypes.indexOf(t), 1) : selectedTypes.push(t)"
+              :class="[
+                'px-3 py-1.5 rounded-btn text-xs font-medium border transition-colors',
+                selectedTypes.includes(t)
+                  ? 'border-notion-accent dark:border-notion-accent-dark bg-notion-accent/10 dark:bg-notion-accent-dark/15 text-notion-accent dark:text-notion-accent-dark'
+                  : 'border-notion-border dark:border-notion-border-dark text-notion-muted dark:text-notion-muted-dark hover:border-gray-300 dark:hover:border-gray-600'
+              ]"
+            >{{ t }}</button>
+          </div>
         </div>
         <div class="grid grid-cols-2 gap-4">
           <div>
