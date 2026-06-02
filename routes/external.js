@@ -400,7 +400,11 @@ module.exports = function (getDb, { md5, safeParse, sendError, localNow }) {
       if (existing) return;
 
       // Normalize options before saving
-      const normalizedOpts = normalizeOptions(options);
+      let normalizedOpts = normalizeOptions(options);
+      // 填空题和简答题本身没有选项，置空避免存入垃圾数据
+      if (['填空题', '简答题', 'completion', 'essay'].includes(normalizedType)) {
+        normalizedOpts = null;
+      }
 
       db.prepare(`
         INSERT INTO data_questions (created_at, updated_at, md5, type, content, options, answers, right_status, category)
