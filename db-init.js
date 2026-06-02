@@ -46,6 +46,7 @@ db.exec(`
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     name        TEXT NOT NULL UNIQUE,
     score       INTEGER,
+    notes       TEXT,
     created_at  DATETIME
   );
 

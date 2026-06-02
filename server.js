@@ -89,6 +89,7 @@ function initDatabase(db) {
   // Auto-migrate: add missing columns to existing tables
   try { db.exec(`ALTER TABLE data_questions ADD COLUMN category TEXT DEFAULT '默认'`); } catch {}
   try { db.exec(`ALTER TABLE data_categories ADD COLUMN score INTEGER`); } catch {}
+  try { db.exec(`ALTER TABLE data_categories ADD COLUMN notes TEXT`); } catch {}
 
   // Indexes
   try { db.exec(`CREATE INDEX IF NOT EXISTS idx_questions_type ON data_questions(type)`); } catch {}

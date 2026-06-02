@@ -937,6 +937,7 @@ async function batchDeleteByDate() {
     <ImportCategoryDialog
       v-if="showCategoryDialog"
       :categories="importCategories"
+      :localCategories="categories"
       :totalQuestions="pendingQuestions?.length || 0"
       @confirm="onCategoryConfirmed"
       @cancel="onCategoryCancelled"

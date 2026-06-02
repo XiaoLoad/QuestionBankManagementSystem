@@ -17,9 +17,11 @@ const categories = ref([])
 const loading = ref(true)
 const newName = ref('')
 const newScore = ref('')
+const newNotes = ref('')
 const editingId = ref(null)
 const editingName = ref('')
 const editingScore = ref(null)
+const editingNotes = ref(null)
 
 // Move dialog
 const moveVisible = ref(false)
@@ -88,10 +90,11 @@ async function addCategory() {
     return
   }
   try {
-    await api.createCategory(name, newScore.value === '' ? null : newScore.value)
+    await api.createCategory(name, newScore.value === '' ? null : newScore.value, newNotes.value.trim() || null)
     toast.success('添加成功')
     newName.value = ''
     newScore.value = ''
+    newNotes.value = ''
     loadCategories()
   } catch (e) {
     // handled
@@ -102,12 +105,14 @@ function startEdit(cat) {
   editingId.value = cat.id
   editingName.value = cat.name
   editingScore.value = cat.score !== null && cat.score !== undefined ? String(cat.score) : ''
+  editingNotes.value = cat.notes || ''
 }
 
 function cancelEdit() {
   editingId.value = null
   editingName.value = ''
   editingScore.value = null
+  editingNotes.value = null
 }
 
 async function saveEdit() {
@@ -120,6 +125,7 @@ async function saveEdit() {
     await api.updateCategory(editingId.value, {
       name,
       score: editingScore.value === '' ? null : editingScore.value,
+      notes: editingNotes.value !== null ? (editingNotes.value.trim() || null) : undefined,
     })
     toast.success('更新成功')
     cancelEdit()
@@ -242,6 +248,12 @@ async function doDelete() {
             class="input-field w-44"
           />
           <input
+            v-model="newNotes"
+            type="text"
+            placeholder="备注（可选）"
+            class="input-field w-36"
+          />
+          <input
             v-model="newScore"
             type="number"
             min="0"
@@ -296,6 +308,7 @@ async function doDelete() {
                   <p class="text-sm font-medium text-notion-text dark:text-notion-text-dark truncate hover:text-notion-accent dark:hover:text-notion-accent-dark transition-colors">{{ cat.name }}</p>
                   <p class="text-xs text-notion-muted dark:text-notion-muted-dark mt-0.5">
                     {{ cat.question_count }} 道题目
+                    <span v-if="cat.notes" class="ml-2 text-notion-muted/70 dark:text-notion-muted-dark/70">· {{ cat.notes.length > 30 ? cat.notes.slice(0, 30) + '...' : cat.notes }}</span>
                   </p>
                 </div>
               </div>
@@ -329,6 +342,7 @@ async function doDelete() {
             <template v-else>
               <form @submit.prevent="saveEdit" class="flex items-center gap-3 flex-1">
                 <input v-model="editingName" type="text" class="input-field flex-1" autofocus />
+                <input v-model="editingNotes" type="text" class="input-field w-40" placeholder="备注" />
                 <input v-model="editingScore" type="number" min="0" class="input-field w-20" placeholder="分数" />
                 <div class="flex gap-2 flex-shrink-0">
                   <button type="submit" class="btn-primary text-xs py-1.5 px-3">保存</button>

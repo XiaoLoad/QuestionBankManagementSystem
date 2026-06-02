@@ -9,7 +9,7 @@ module.exports = function (getDb, { sendError, localNow }) {
     try {
       const db = getDb();
       const rows = db.prepare(`
-        SELECT c.id, c.name, c.score, c.created_at,
+        SELECT c.id, c.name, c.score, c.notes, c.created_at,
           COALESCE(q.cnt, 0) as question_count
         FROM data_categories c
         LEFT JOIN (
@@ -27,7 +27,7 @@ module.exports = function (getDb, { sendError, localNow }) {
   router.post('/', (req, res) => {
     try {
       const db = getDb();
-      const { name, score } = req.body;
+      const { name, score, notes } = req.body;
       const errors = validateCategoryName(name);
       if (errors.length > 0) return res.status(400).json({ error: errors[0] });
 
@@ -36,7 +36,8 @@ module.exports = function (getDb, { sendError, localNow }) {
       if (existing) return res.status(400).json({ error: '分类已存在' });
       const now = localNow();
       const catScore = (score !== undefined && score !== null && score !== '') ? Math.floor(Number(score)) : null;
-      const result = db.prepare("INSERT INTO data_categories (name, score, created_at) VALUES (?, ?, ?)").run(trimmed, catScore >= 0 ? catScore : null, now);
+      const catNotes = (notes !== undefined && notes !== null) ? String(notes).trim() || null : null;
+      const result = db.prepare("INSERT INTO data_categories (name, score, notes, created_at) VALUES (?, ?, ?, ?)").run(trimmed, catScore >= 0 ? catScore : null, catNotes, now);
       res.json({ id: result.lastInsertRowid, message: '添加成功' });
     } catch (err) { sendError(res, err, 'POST /api/categories'); }
   });
@@ -48,12 +49,13 @@ module.exports = function (getDb, { sendError, localNow }) {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ error: '无效的分类 ID' });
 
-      const { name, score } = req.body;
+      const { name, score, notes } = req.body;
       const trimmed = name ? name.trim() : null;
       const hasScore = score !== undefined;
+      const hasNotes = notes !== undefined;
       const catScore = hasScore ? (score === '' || score === null ? null : Math.floor(Number(score))) : undefined;
 
-      if (!trimmed && !hasScore) return res.status(400).json({ error: '请提供分类名称或分数' });
+      if (!trimmed && !hasScore && !hasNotes) return res.status(400).json({ error: '请提供分类名称、分数或备注' });
 
       const cat = db.prepare("SELECT * FROM data_categories WHERE id = ?").get(id);
       if (!cat) return res.status(404).json({ error: '分类不存在' });
@@ -72,6 +74,10 @@ module.exports = function (getDb, { sendError, localNow }) {
         }
         if (hasScore) {
           db.prepare("UPDATE data_categories SET score = ? WHERE id = ?").run(catScore !== null && catScore >= 0 ? catScore : null, id);
+        }
+        if (hasNotes) {
+          const catNotes = String(notes).trim() || null;
+          db.prepare("UPDATE data_categories SET notes = ? WHERE id = ?").run(catNotes, id);
         }
       });
       updateCategory();

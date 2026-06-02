@@ -46,7 +46,7 @@ export function useApi() {
 
     // Categories
     getCategories: () => request('/api/categories'),
-    createCategory: (name, score) => request('/api/categories', { method: 'POST', body: JSON.stringify({ name, score }) }),
+    createCategory: (name, score, notes) => request('/api/categories', { method: 'POST', body: JSON.stringify({ name, score, notes }) }),
     updateCategory: (id, nameOrBody) => {
       const body = typeof nameOrBody === 'object' ? nameOrBody : { name: nameOrBody };
       return request(`/api/categories/${id}`, { method: 'PUT', body: JSON.stringify(body) });
