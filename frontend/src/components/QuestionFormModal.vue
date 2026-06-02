@@ -56,7 +56,9 @@ function handleSubmit() {
     category: form.category || '默认',
   }
 
-  if (needsOptions.value && form.options.trim()) {
+  if (form.type === '判断题') {
+    data.options = ['对', '错']
+  } else if (needsOptions.value && form.options.trim()) {
     data.options = form.options.split('\n').map(s => s.trim()).filter(Boolean)
   } else {
     data.options = null
