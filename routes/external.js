@@ -534,12 +534,12 @@ module.exports = function (getDb, { md5, safeParse, sendError, localNow, extract
   // POST /api/external/yatori
   router.post('/yatori', async (req, res) => {
     try {
-      const { type, content, hash, answer, json } = req.body;
+      const { type, content, hash, options } = req.body;
       if (!content && !hash) {
         return res.status(400).json({ type: '单选', answers: [] });
       }
 
-      const result = await queryQuestion('yatori', content, type, null);
+      const result = await queryQuestion('yatori', content, type, options);
       res.json({
         type: yatoriType(result.type || type),
         answers: result.answers,

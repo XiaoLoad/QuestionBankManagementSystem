@@ -17,7 +17,7 @@ module.exports = function (getDb, { sendError, localNow }) {
           FROM data_questions WHERE deleted_at IS NULL
           GROUP BY category
         ) q ON q.category = c.name
-        ORDER BY c.id ASC
+        ORDER BY CASE WHEN c.name = '默认' THEN 0 ELSE 1 END, c.id ASC
       `).all();
       res.json(rows);
     } catch (err) { sendError(res, err, 'GET /api/categories'); }
@@ -127,6 +127,7 @@ module.exports = function (getDb, { sendError, localNow }) {
       const { confirm } = req.body;
       const cat = db.prepare("SELECT * FROM data_categories WHERE id = ?").get(id);
       if (!cat) return res.status(404).json({ error: '分类不存在' });
+      if (cat.name === '默认') return res.status(400).json({ error: '默认分类不能删除' });
 
       if (confirm !== cat.name) {
         return res.status(400).json({ error: 'confirm_required', message: `请输入分类名称「${cat.name}」以确认删除` });
