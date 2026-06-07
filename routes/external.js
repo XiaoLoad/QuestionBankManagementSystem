@@ -505,7 +505,10 @@ module.exports = function (getDb, { md5, safeParse, sendError, localNow, extract
     try {
       // Normalize content/options before sending to AI (strip trailing dashes, etc.)
       const cleanContent = normalizeContent(content) || content;
-      const cleanOptions = normalizeOptions(options);
+      // 填空题和简答题不需要选项，置空避免 OCS 传入的 JS 代码污染 AI prompt
+      const cleanOptions = ['填空题', '简答题', 'completion', 'essay'].includes(type)
+        ? null
+        : normalizeOptions(options);
       const aiAnswers = await callAIForAnswer(db, cleanContent, type, cleanOptions, config.ai_timeout);
       const costMs = Date.now() - start;
 
