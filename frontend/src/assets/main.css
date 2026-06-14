@@ -105,6 +105,10 @@ mark.search-highlight {
 ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
 .dark ::-webkit-scrollbar-thumb { background: #4b5563; }
 
+/* Hide scrollbar for mobile navigation */
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
 /* JSON syntax highlighting */
 .json-viewer .json-key { color: #7c3aed; }
 .json-viewer .json-str { color: #059669; }
