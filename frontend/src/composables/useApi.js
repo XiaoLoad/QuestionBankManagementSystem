@@ -1,13 +1,31 @@
 import { useToastStore } from '@/stores/toast'
+import { useAuthStore } from '@/stores/auth'
 
 async function request(url, options = {}) {
   const toast = useToastStore()
+  const authStore = useAuthStore()
 
   try {
+    const headers = { 'Content-Type': 'application/json' }
+
+    // 添加 token
+    if (authStore.token) {
+      headers['Authorization'] = `Bearer ${authStore.token}`
+    }
+
     const res = await fetch(url, {
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       ...options,
     })
+
+    // 401 时清除 token
+    if (res.status === 401) {
+      authStore.logout()
+      // 使用 window.location 跳转，避免循环依赖
+      window.location.href = '/login'
+      throw { status: 401, data: { error: '登录已过期' } }
+    }
+
     const data = await res.json()
     if (!res.ok) {
       const msg = data.error || data.message || '请求失败'
@@ -25,6 +43,18 @@ async function request(url, options = {}) {
 
 export function useApi() {
   return {
+    // Auth
+    login: (username, password) => request('/api/auth/login', { method: 'POST', body: JSON.stringify({ username, password }) }),
+    getMe: () => request('/api/auth/me'),
+    changePassword: (oldPassword, newPassword) => request('/api/auth/change-password', { method: 'POST', body: JSON.stringify({ oldPassword, newPassword }) }),
+
+    // Users (Admin)
+    getUsers: () => request('/api/users'),
+    createUser: (body) => request('/api/users', { method: 'POST', body: JSON.stringify(body) }),
+    updateUser: (id, body) => request(`/api/users/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+    deleteUser: (id) => request(`/api/users/${id}`, { method: 'DELETE' }),
+    resetUserPassword: (id, newPassword) => request(`/api/users/${id}/reset-password`, { method: 'POST', body: JSON.stringify({ newPassword }) }),
+
     // Questions
     getQuestions: (params = {}) => {
       const qs = new URLSearchParams()
@@ -45,6 +75,7 @@ export function useApi() {
     refresh: () => request('/api/refresh'),
 
     // Quiz
+    getTypeCounts: (category) => request(`/api/quiz/type-counts${category ? `?category=${encodeURIComponent(category)}` : ''}`),
     getQuizQuestions: (params = {}) => {
       const qs = new URLSearchParams()
       Object.entries(params).forEach(([k, v]) => {

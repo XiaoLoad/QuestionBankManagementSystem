@@ -2,6 +2,7 @@ const express = require('express');
 const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
+const bcrypt = require('bcryptjs');
 const { localNow, safeParse, md5, sendError, extractImageUrls, stripImageUrls, buildUserContent } = require('./utils');
 
 const app = express();
@@ -143,6 +144,33 @@ function initDatabase(db) {
   } catch {}
   try { db.exec(`CREATE INDEX IF NOT EXISTS idx_ext_logs_created ON external_logs(created_at)`); } catch {}
   try { db.exec(`CREATE INDEX IF NOT EXISTS idx_ext_logs_source ON external_logs(source)`); } catch {}
+
+  // Ensure users table exists
+  try {
+    db.exec(`CREATE TABLE IF NOT EXISTS users (
+      id            INTEGER PRIMARY KEY AUTOINCREMENT,
+      username      TEXT NOT NULL UNIQUE,
+      password      TEXT NOT NULL,
+      role          TEXT NOT NULL DEFAULT 'user',
+      display_name  TEXT,
+      created_at    DATETIME,
+      updated_at    DATETIME,
+      last_login_at DATETIME,
+      is_active     INTEGER DEFAULT 1
+    )`);
+  } catch {}
+
+  // Create default admin user if not exists
+  try {
+    const adminExists = db.prepare('SELECT id FROM users WHERE username = ?').get('admin');
+    if (!adminExists) {
+      const hash = bcrypt.hashSync('admin123', 10);
+      const now = localNow();
+      db.prepare('INSERT INTO users (username, password, role, display_name, created_at) VALUES (?, ?, ?, ?, ?)')
+        .run('admin', hash, 'admin', '管理员', now);
+      console.log('[db] 已创建默认管理员账号: admin / admin123');
+    }
+  } catch {}
 }
 
 function openDatabase(dbPath) {
@@ -211,33 +239,47 @@ app.use((req, res, next) => {
 // ========== Routes ==========
 const helpers = { md5, safeParse, sendError, localNow, extractImageUrls, stripImageUrls, buildUserContent };
 
-const questionsRouter = require('./routes/questions')(getDb, helpers);
-const trashRouter = require('./routes/trash')(getDb, helpers);
-const statsRouter = require('./routes/stats')(getDb, helpers);
-const categoriesRouter = require('./routes/categories')(getDb, helpers);
-const backupRouter = require('./routes/backup')(getDb, helpers);
-const aiRouter = require('./routes/ai')(getDb, helpers);
-const duplicatesRouter = require('./routes/duplicates')(getDb, helpers);
+// Auth middleware
+const auth = require('./middleware/auth')(getDb);
+
+// Auth routes (public)
+const authRouter = require('./routes/auth')(getDb, helpers, auth);
+app.use('/api/auth', authRouter);
+
+// User management routes (admin only)
+const usersRouter = require('./routes/users')(getDb, helpers, auth);
+app.use('/api/users', usersRouter);
+
+// Routes with read access for all users, write access for admin only
+const questionsRouter = require('./routes/questions')(getDb, helpers, auth);
+const trashRouter = require('./routes/trash')(getDb, helpers, auth);
+const statsRouter = require('./routes/stats')(getDb, helpers, auth);
+const categoriesRouter = require('./routes/categories')(getDb, helpers, auth);
+const backupRouter = require('./routes/backup')(getDb, helpers, auth);
+const aiRouter = require('./routes/ai')(getDb, helpers, auth);
+const duplicatesRouter = require('./routes/duplicates')(getDb, helpers, auth);
 const databaseRouter = require('./routes/database')(getDb, setDb, helpers, {
   config, DEFAULT_DB_PATH, UPLOADS_DIR, TMP_DIR, isSQLiteFile, openDatabase, getDbStats, loadConfig, saveConfig,
-});
-const externalRouter = require('./routes/external')(getDb, helpers);
-const quizRouter = require('./routes/quiz')(getDb, helpers);
+}, auth);
+const quizRouter = require('./routes/quiz')(getDb, helpers, auth);
 
-app.use('/api/questions', questionsRouter);
-app.use('/api/trash', trashRouter);
-app.use('/api/stats', statsRouter);
-app.use('/api/refresh', statsRouter);
-app.use('/api/categories', categoriesRouter);
-app.use('/api/backup', backupRouter);
-app.use('/api/ai', aiRouter);
-app.use('/api/duplicates', duplicatesRouter);
-app.use('/api/database', databaseRouter);
+app.use('/api/questions', auth.authRequired, questionsRouter);
+app.use('/api/trash', auth.authRequired, trashRouter);
+app.use('/api/stats', auth.authRequired, statsRouter);
+app.use('/api/categories', auth.authRequired, categoriesRouter);
+app.use('/api/backup', auth.adminRequired, backupRouter);
+app.use('/api/ai', auth.authRequired, aiRouter);
+app.use('/api/ai/analyze', auth.authRequired);
+app.use('/api/duplicates', auth.adminRequired, duplicatesRouter);
+app.use('/api/database', auth.adminRequired, databaseRouter);
+app.use('/api/quiz', auth.authRequired, quizRouter);
+
+// External routes (no auth required - for yatori/OCS)
+const externalRouter = require('./routes/external')(getDb, helpers);
 app.use('/api/external', externalRouter);
-app.use('/api/quiz', quizRouter);
 
 // GET /api/refresh — merge stats + categories in one call
-app.get('/api/refresh', (req, res) => {
+app.get('/api/refresh', auth.authRequired, (req, res) => {
   try {
     const curDb = getDb();
     const days = Math.max(7, Math.min(365, parseInt(req.query.days) || 30));

@@ -10,6 +10,7 @@
 const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
+const bcrypt = require('bcryptjs');
 const { localNow } = require('./utils');
 
 const DB_PATH = path.join(__dirname, 'default.db');
@@ -85,11 +86,28 @@ db.exec(`
 
   CREATE INDEX IF NOT EXISTS idx_ext_logs_created ON external_logs(created_at);
   CREATE INDEX IF NOT EXISTS idx_ext_logs_source ON external_logs(source);
+
+  CREATE TABLE IF NOT EXISTS users (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    username      TEXT NOT NULL UNIQUE,
+    password      TEXT NOT NULL,
+    role          TEXT NOT NULL DEFAULT 'user',
+    display_name  TEXT,
+    created_at    DATETIME,
+    updated_at    DATETIME,
+    last_login_at DATETIME,
+    is_active     INTEGER DEFAULT 1
+  );
 `);
 
 // Insert default category
 const now = localNow();
 db.prepare("INSERT OR IGNORE INTO data_categories (name, created_at) VALUES (?, ?)").run('默认', now);
+
+// Insert default admin user
+const adminHash = bcrypt.hashSync('admin123', 10);
+db.prepare("INSERT OR IGNORE INTO users (username, password, role, display_name, created_at) VALUES (?, ?, ?, ?, ?)")
+  .run('admin', adminHash, 'admin', '管理员', now);
 
 db.close();
 
@@ -99,4 +117,6 @@ console.log('[db-init]   - data_categories 表已就绪（默认分类）');
 console.log('[db-init]   - ai_providers 表已就绪（AI 服务商配置）');
 console.log('[db-init]   - external_config 表已就绪（题库对接配置）');
 console.log('[db-init]   - external_logs 表已就绪（对接查询日志）');
+console.log('[db-init]   - users 表已就绪（用户管理）');
+console.log('[db-init]   - 默认管理员账号: admin / admin123');
 console.log('[db-init]   - 性能索引已创建');

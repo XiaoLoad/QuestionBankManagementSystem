@@ -1,6 +1,13 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { useAuthStore } from '../stores/auth'
 
 const routes = [
+  {
+    path: '/login',
+    name: 'Login',
+    component: () => import('@/views/Login.vue'),
+    meta: { title: '登录', requiresAuth: false }
+  },
   {
     path: '/',
     name: 'Dashboard',
@@ -29,13 +36,13 @@ const routes = [
     path: '/data',
     name: 'Data',
     component: () => import('@/views/DataManagement.vue'),
-    meta: { title: '数据管理' }
+    meta: { title: '数据管理', requiresAdmin: true }
   },
   {
     path: '/trash',
     name: 'Trash',
     component: () => import('@/views/Trash.vue'),
-    meta: { title: '回收站' }
+    meta: { title: '回收站', requiresAdmin: true }
   },
   {
     path: '/quiz',
@@ -47,13 +54,19 @@ const routes = [
     path: '/ai-settings',
     name: 'AiSettings',
     component: () => import('@/views/AiSettings.vue'),
-    meta: { title: 'AI 设置' }
+    meta: { title: 'AI 设置', requiresAdmin: true }
   },
   {
     path: '/external',
     name: 'ExternalBanks',
     component: () => import('@/views/ExternalBanks.vue'),
-    meta: { title: '题库对接' }
+    meta: { title: '题库对接', requiresAdmin: true }
+  },
+  {
+    path: '/users',
+    name: 'Users',
+    component: () => import('@/views/UserManagement.vue'),
+    meta: { title: '用户管理', requiresAdmin: true }
   },
   {
     path: '/about',
@@ -65,7 +78,7 @@ const routes = [
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
     component: () => import('@/views/NotFound.vue'),
-    meta: { title: '页面未找到' }
+    meta: { title: '页面未找到', requiresAuth: false }
   }
 ]
 
@@ -74,8 +87,35 @@ const router = createRouter({
   routes
 })
 
-router.beforeEach((to) => {
+router.beforeEach((to, from, next) => {
   document.title = `${to.meta.title || '题库管理'} - 题库管理`
+
+  const authStore = useAuthStore()
+
+  // 登录页不需要认证
+  if (to.path === '/login') {
+    if (authStore.isLoggedIn) {
+      return next('/')  // 已登录则跳转首页
+    }
+    return next()
+  }
+
+  // 不需要认证的页面
+  if (to.meta.requiresAuth === false) {
+    return next()
+  }
+
+  // 检查是否有 token
+  if (!authStore.isLoggedIn) {
+    return next('/login')
+  }
+
+  // 检查管理员路由
+  if (to.meta.requiresAdmin && !authStore.isAdmin) {
+    return next('/quiz')  // 非管理员跳转到刷题页
+  }
+
+  next()
 })
 
 export default router

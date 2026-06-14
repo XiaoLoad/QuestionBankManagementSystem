@@ -1,7 +1,8 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useThemeStore } from '@/stores/theme'
+import { useAuthStore } from '@/stores/auth'
 import { useApi } from '@/composables/useApi'
 import { useTrashStore } from '@/stores/trash'
 
@@ -13,22 +14,33 @@ const emit = defineEmits(['close'])
 const route = useRoute()
 const router = useRouter()
 const theme = useThemeStore()
+const authStore = useAuthStore()
 const api = useApi()
 const trashStore = useTrashStore()
 
-const navItems = [
+const allNavItems = [
   { path: '/', name: '仪表盘', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
   { path: '/questions', name: '题目管理', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01' },
   { path: '/categories', name: '分类管理', icon: 'M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z' },
-  { path: '/data', name: '数据管理', icon: 'M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4' },
+  { path: '/data', name: '数据管理', icon: 'M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4', adminOnly: true },
   { path: '/quiz', name: '刷题', icon: 'M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z' },
-  { path: '/ai-settings', name: 'AI 设置', icon: 'M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5' },
-  { path: '/external', name: '题库对接', icon: 'M8.288 15.038a5.25 5.25 0 017.424 0M5.106 11.856c3.807-3.808 9.98-3.808 13.788 0M1.924 8.674c5.565-5.565 14.587-5.565 20.152 0M12.53 18.22l-.53.53-.53-.53a.75.75 0 011.06 0z' },
-  { path: '/trash', name: '回收站', icon: 'M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16', badge: true },
+  { path: '/ai-settings', name: 'AI 设置', icon: 'M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5', adminOnly: true },
+  { path: '/external', name: '题库对接', icon: 'M8.288 15.038a5.25 5.25 0 017.424 0M5.106 11.856c3.807-3.808 9.98-3.808 13.788 0M1.924 8.674c5.565-5.565 14.587-5.565 20.152 0M12.53 18.22l-.53.53-.53-.53a.75.75 0 011.06 0z', adminOnly: true },
+  { path: '/users', name: '用户管理', icon: 'M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z', adminOnly: true },
+  { path: '/trash', name: '回收站', icon: 'M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16', badge: true, adminOnly: true },
   { path: '/about', name: '关于', icon: 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
 ]
 
+// 根据角色过滤菜单项
+const navItems = computed(() => {
+  if (authStore.isAdmin) {
+    return allNavItems
+  }
+  return allNavItems.filter(item => !item.adminOnly)
+})
+
 async function loadTrashCount() {
+  if (!authStore.isAdmin) return
   try {
     const data = await api.getTrashCount()
     trashStore.setCount(data.count || 0)
@@ -48,6 +60,11 @@ function navigate(path) {
 function isActive(path) {
   if (path === '/') return route.path === '/'
   return route.path.startsWith(path)
+}
+
+function handleLogout() {
+  authStore.logout()
+  router.push('/login')
 }
 </script>
 
@@ -101,6 +118,24 @@ function isActive(path) {
 
     <!-- Footer -->
     <div class="px-3 py-4 border-t border-notion-border dark:border-notion-border-dark space-y-2">
+      <!-- User Info -->
+      <div class="flex items-center gap-3 px-3 py-2">
+        <div class="w-8 h-8 rounded-full bg-accent/10 dark:bg-accent-dark/10 flex items-center justify-center">
+          <span class="text-sm font-medium text-accent dark:text-accent-dark">
+            {{ authStore.displayName ? authStore.displayName.charAt(0).toUpperCase() : 'U' }}
+          </span>
+        </div>
+        <div class="flex-1 min-w-0">
+          <p class="text-sm font-medium text-notion-text dark:text-notion-text-dark truncate">
+            {{ authStore.displayName || '用户' }}
+          </p>
+          <p class="text-xs text-notion-muted dark:text-notion-muted-dark">
+            {{ authStore.isAdmin ? '管理员' : '普通用户' }}
+          </p>
+        </div>
+      </div>
+
+      <!-- Theme Toggle -->
       <button
         @click="theme.toggle()"
         class="w-full flex items-center gap-3 px-3 py-2.5 rounded-btn text-sm font-medium text-notion-text dark:text-notion-text-dark hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
@@ -112,6 +147,17 @@ function isActive(path) {
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
         </svg>
         {{ theme.isDark ? '切换亮色' : '切换暗色' }}
+      </button>
+
+      <!-- Logout -->
+      <button
+        @click="handleLogout"
+        class="w-full flex items-center gap-3 px-3 py-2.5 rounded-btn text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+      >
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+        </svg>
+        退出登录
       </button>
     </div>
   </aside>
