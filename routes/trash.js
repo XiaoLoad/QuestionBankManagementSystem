@@ -1,7 +1,10 @@
 const express = require('express');
 
-module.exports = function (getDb, { safeParse, sendError, localNow }) {
+module.exports = function (getDb, { safeParse, sendError, localNow }, auth) {
   const router = express.Router();
+
+  // 所有回收站路由需要管理员权限
+  router.use(auth.adminRequired);
 
   // GET /api/trash
   router.get('/', (req, res) => {

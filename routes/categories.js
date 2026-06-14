@@ -1,10 +1,10 @@
 const express = require('express');
 const { validateCategoryName } = require('../validate');
 
-module.exports = function (getDb, { sendError, localNow }) {
+module.exports = function (getDb, { sendError, localNow }, auth) {
   const router = express.Router();
 
-  // GET /api/categories
+  // GET /api/categories (所有登录用户可访问)
   router.get('/', (req, res) => {
     try {
       const db = getDb();
@@ -23,8 +23,8 @@ module.exports = function (getDb, { sendError, localNow }) {
     } catch (err) { sendError(res, err, 'GET /api/categories'); }
   });
 
-  // POST /api/categories
-  router.post('/', (req, res) => {
+  // POST /api/categories (仅管理员)
+  router.post('/', auth.adminRequired, (req, res) => {
     try {
       const db = getDb();
       const { name, score, notes } = req.body;
@@ -42,8 +42,8 @@ module.exports = function (getDb, { sendError, localNow }) {
     } catch (err) { sendError(res, err, 'POST /api/categories'); }
   });
 
-  // PUT /api/categories/:id
-  router.put('/:id', (req, res) => {
+  // PUT /api/categories/:id (仅管理员)
+  router.put('/:id', auth.adminRequired, (req, res) => {
     try {
       const db = getDb();
       const id = parseInt(req.params.id);
@@ -85,8 +85,8 @@ module.exports = function (getDb, { sendError, localNow }) {
     } catch (err) { sendError(res, err, 'PUT /api/categories/:id'); }
   });
 
-  // POST /api/categories/:id/move
-  router.post('/:id/move', (req, res) => {
+  // POST /api/categories/:id/move (仅管理员)
+  router.post('/:id/move', auth.adminRequired, (req, res) => {
     try {
       const db = getDb();
       const id = parseInt(req.params.id);
@@ -117,8 +117,8 @@ module.exports = function (getDb, { sendError, localNow }) {
     } catch (err) { sendError(res, err, 'POST /api/categories/:id/move'); }
   });
 
-  // DELETE /api/categories/:id
-  router.delete('/:id', (req, res) => {
+  // DELETE /api/categories/:id (仅管理员)
+  router.delete('/:id', auth.adminRequired, (req, res) => {
     try {
       const db = getDb();
       const id = parseInt(req.params.id);

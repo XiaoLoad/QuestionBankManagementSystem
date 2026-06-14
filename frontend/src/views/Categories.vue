@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useApi } from '@/composables/useApi'
+import { useAuthStore } from '@/stores/auth'
 import { useToastStore } from '@/stores/toast'
 import { usePagination } from '@/composables/usePagination'
 import PaginationBar from '@/components/PaginationBar.vue'
@@ -11,6 +12,7 @@ defineOptions({ name: 'Categories' })
 
 const router = useRouter()
 const api = useApi()
+const authStore = useAuthStore()
 const toast = useToastStore()
 
 const categories = ref([])
@@ -238,9 +240,9 @@ async function doDelete() {
           {{ searchQuery ? `${filteredCategories.length} / ${categories.length}` : `${categories.length} 个` }}
         </span>
         <!-- Divider -->
-        <div class="hidden sm:block w-px h-6 bg-notion-border dark:bg-notion-border-dark"></div>
-        <!-- Add form -->
-        <form @submit.prevent="addCategory" class="flex gap-2 flex-shrink-0 items-center">
+        <div v-if="authStore.isAdmin" class="hidden sm:block w-px h-6 bg-notion-border dark:bg-notion-border-dark"></div>
+        <!-- Add form (admin only) -->
+        <form v-if="authStore.isAdmin" @submit.prevent="addCategory" class="flex gap-2 flex-shrink-0 items-center">
           <input
             v-model="newName"
             type="text"
@@ -320,17 +322,17 @@ async function doDelete() {
                 <span class="inline-flex items-center px-2.5 py-1 rounded-badge bg-notion-surface dark:bg-notion-surface-dark text-xs font-medium text-notion-text dark:text-notion-text-dark">
                   {{ cat.question_count }}
                 </span>
-                <button @click="openMove(cat)" class="p-1.5 rounded-btn hover:bg-blue-50 dark:hover:bg-blue-900/20 text-notion-muted dark:text-notion-muted-dark hover:text-blue-500 transition-colors" title="移动题目">
+                <button v-if="authStore.isAdmin" @click="openMove(cat)" class="p-1.5 rounded-btn hover:bg-blue-50 dark:hover:bg-blue-900/20 text-notion-muted dark:text-notion-muted-dark hover:text-blue-500 transition-colors" title="移动题目">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"/>
                   </svg>
                 </button>
-                <button @click="startEdit(cat)" class="p-1.5 rounded-btn hover:bg-gray-100 dark:hover:bg-gray-800 text-notion-muted dark:text-notion-muted-dark transition-colors" title="编辑">
+                <button v-if="authStore.isAdmin" @click="startEdit(cat)" class="p-1.5 rounded-btn hover:bg-gray-100 dark:hover:bg-gray-800 text-notion-muted dark:text-notion-muted-dark transition-colors" title="编辑">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                   </svg>
                 </button>
-                <button v-if="cat.name !== '默认'" @click="openDelete(cat)" class="p-1.5 rounded-btn hover:bg-red-50 dark:hover:bg-red-900/20 text-notion-muted dark:text-notion-muted-dark hover:text-red-500 transition-colors" title="删除">
+                <button v-if="authStore.isAdmin && cat.name !== '默认'" @click="openDelete(cat)" class="p-1.5 rounded-btn hover:bg-red-50 dark:hover:bg-red-900/20 text-notion-muted dark:text-notion-muted-dark hover:text-red-500 transition-colors" title="删除">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                   </svg>

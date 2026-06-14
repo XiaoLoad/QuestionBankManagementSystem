@@ -1,10 +1,10 @@
 const express = require('express');
 const { validateQuestion } = require('../validate');
 
-module.exports = function (getDb, { md5, safeParse, sendError, localNow }) {
+module.exports = function (getDb, { md5, safeParse, sendError, localNow }, auth) {
   const router = express.Router();
 
-  // GET /api/questions
+  // GET /api/questions (所有登录用户可访问)
   router.get('/', (req, res) => {
     try {
       const db = getDb();
@@ -51,8 +51,8 @@ module.exports = function (getDb, { md5, safeParse, sendError, localNow }) {
     } catch (err) { sendError(res, err, 'GET /api/questions/:id'); }
   });
 
-  // POST /api/questions
-  router.post('/', (req, res) => {
+  // POST /api/questions (仅管理员)
+  router.post('/', auth.adminRequired, (req, res) => {
     try {
       const db = getDb();
       const { type, content, options, answers, right_status = 0, category = '默认', images, force = false } = req.body;
@@ -92,8 +92,8 @@ module.exports = function (getDb, { md5, safeParse, sendError, localNow }) {
     } catch (err) { sendError(res, err, 'POST /api/questions'); }
   });
 
-  // PUT /api/questions/batch-category
-  router.put('/batch-category', (req, res) => {
+  // PUT /api/questions/batch-category (仅管理员)
+  router.put('/batch-category', auth.adminRequired, (req, res) => {
     try {
       const db = getDb();
       const { ids, category } = req.body;
@@ -106,8 +106,8 @@ module.exports = function (getDb, { md5, safeParse, sendError, localNow }) {
     } catch (err) { sendError(res, err, 'PUT /api/questions/batch-category'); }
   });
 
-  // PUT /api/questions/:id
-  router.put('/:id', (req, res) => {
+  // PUT /api/questions/:id (仅管理员)
+  router.put('/:id', auth.adminRequired, (req, res) => {
     try {
       const db = getDb();
       const id = parseInt(req.params.id);
@@ -161,8 +161,8 @@ module.exports = function (getDb, { md5, safeParse, sendError, localNow }) {
     } catch (err) { sendError(res, err, 'PUT /api/questions/:id'); }
   });
 
-  // DELETE /api/questions/:id (soft delete)
-  router.delete('/:id', (req, res) => {
+  // DELETE /api/questions/:id (soft delete, 仅管理员)
+  router.delete('/:id', auth.adminRequired, (req, res) => {
     try {
       const db = getDb();
       const id = parseInt(req.params.id);
@@ -174,8 +174,8 @@ module.exports = function (getDb, { md5, safeParse, sendError, localNow }) {
     } catch (err) { sendError(res, err, 'DELETE /api/questions/:id'); }
   });
 
-  // POST /api/questions/batch-delete
-  router.post('/batch-delete', (req, res) => {
+  // POST /api/questions/batch-delete (仅管理员)
+  router.post('/batch-delete', auth.adminRequired, (req, res) => {
     try {
       const db = getDb();
       const { ids, before, after, type, category } = req.body;

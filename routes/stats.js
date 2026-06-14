@@ -1,9 +1,9 @@
 const express = require('express');
 
-module.exports = function (getDb, { sendError }) {
+module.exports = function (getDb, { sendError }, auth) {
   const router = express.Router();
 
-  // GET /api/stats
+  // GET /api/stats (所有登录用户可访问)
   router.get('/', (req, res) => {
     try {
       const db = getDb();

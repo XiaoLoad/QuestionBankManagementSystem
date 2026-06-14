@@ -2,6 +2,7 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useApi } from '@/composables/useApi'
+import { useAuthStore } from '@/stores/auth'
 import { useToastStore } from '@/stores/toast'
 import { useConfirmStore } from '@/stores/confirm'
 import { useTrashStore } from '@/stores/trash'
@@ -19,6 +20,7 @@ import { useQuestionsPageStore } from '@/stores/questionsPage'
 defineOptions({ name: 'Questions' })
 
 const api = useApi()
+const authStore = useAuthStore()
 const router = useRouter()
 const route = useRoute()
 const toast = useToastStore()
@@ -114,10 +116,12 @@ onMounted(() => {
   }
   loadQuestions()
   loadCategories()
-})
 
-// Refresh trash count on mount
-api.getTrashCount().then(d => trashStore.setCount(d.count || 0)).catch(() => {})
+  // Refresh trash count on mount (admin only)
+  if (authStore.isAdmin) {
+    api.getTrashCount().then(d => trashStore.setCount(d.count || 0)).catch(() => {})
+  }
+})
 
 // Filter changes
 function onFilterChange() {
@@ -266,7 +270,7 @@ function highlight(text) {
         <h1 class="text-2xl font-bold text-notion-text dark:text-notion-text-dark">题目管理</h1>
         <p class="text-sm text-notion-muted dark:text-notion-muted-dark mt-1">共 {{ total }} 道题目</p>
       </div>
-      <button @click="addQuestion" class="btn-primary">
+      <button v-if="authStore.isAdmin" @click="addQuestion" class="btn-primary">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
         </svg>
@@ -316,8 +320,8 @@ function highlight(text) {
       </div>
     </div>
 
-    <!-- Batch actions (fixed, conditional) -->
-    <div v-if="selectedIds.length > 0" class="flex-shrink-0 flex flex-wrap items-center gap-3 mb-4 p-3 bg-notion-accent/5 dark:bg-notion-accent-dark/10 rounded-card border border-notion-accent/20 dark:border-notion-accent-dark/20">
+    <!-- Batch actions (fixed, conditional, admin only) -->
+    <div v-if="authStore.isAdmin && selectedIds.length > 0" class="flex-shrink-0 flex flex-wrap items-center gap-3 mb-4 p-3 bg-notion-accent/5 dark:bg-notion-accent-dark/10 rounded-card border border-notion-accent/20 dark:border-notion-accent-dark/20">
       <span class="text-sm font-medium text-notion-accent dark:text-notion-accent-dark">
         已选择 {{ selectedIds.length }} 项
       </span>
@@ -415,12 +419,12 @@ function highlight(text) {
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                       </svg>
                     </button>
-                    <button @click="editQuestion(q)" class="p-1.5 rounded-btn hover:bg-gray-100 dark:hover:bg-gray-800 text-notion-muted dark:text-notion-muted-dark transition-colors" title="编辑">
+                    <button v-if="authStore.isAdmin" @click="editQuestion(q)" class="p-1.5 rounded-btn hover:bg-gray-100 dark:hover:bg-gray-800 text-notion-muted dark:text-notion-muted-dark transition-colors" title="编辑">
                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                       </svg>
                     </button>
-                    <button @click="deleteQuestion(q)" class="p-1.5 rounded-btn hover:bg-red-50 dark:hover:bg-red-900/20 text-notion-muted dark:text-notion-muted-dark hover:text-red-500 transition-colors" title="删除">
+                    <button v-if="authStore.isAdmin" @click="deleteQuestion(q)" class="p-1.5 rounded-btn hover:bg-red-50 dark:hover:bg-red-900/20 text-notion-muted dark:text-notion-muted-dark hover:text-red-500 transition-colors" title="删除">
                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                       </svg>

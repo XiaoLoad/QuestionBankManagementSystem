@@ -7,16 +7,16 @@ const BUILT_IN_PROVIDERS = [
   { name: '豆包', base_url: 'https://ark.cn-beijing.volces.com/api/v3' },
 ];
 
-module.exports = function (getDb, { md5, sendError, localNow, extractImageUrls, stripImageUrls, buildUserContent }) {
+module.exports = function (getDb, { md5, sendError, localNow, extractImageUrls, stripImageUrls, buildUserContent }, auth) {
   const router = express.Router();
 
-  // GET /api/ai/presets
+  // GET /api/ai/presets (所有登录用户可访问)
   router.get('/presets', (req, res) => {
     res.json(BUILT_IN_PROVIDERS);
   });
 
-  // GET /api/ai/providers
-  router.get('/providers', (req, res) => {
+  // GET /api/ai/providers (仅管理员)
+  router.get('/providers', auth.adminRequired, (req, res) => {
     try {
       const db = getDb();
       const rows = db.prepare('SELECT * FROM ai_providers ORDER BY is_default DESC, id ASC').all();
@@ -31,7 +31,7 @@ module.exports = function (getDb, { md5, sendError, localNow, extractImageUrls, 
   });
 
   // POST /api/ai/providers
-  router.post('/providers', (req, res) => {
+  router.post('/providers', auth.adminRequired, (req, res) => {
     try {
       const db = getDb();
       const { name, base_url, api_key, model = '', is_default = false } = req.body;
@@ -50,7 +50,7 @@ module.exports = function (getDb, { md5, sendError, localNow, extractImageUrls, 
   });
 
   // PUT /api/ai/providers/:id
-  router.put('/providers/:id', (req, res) => {
+  router.put('/providers/:id', auth.adminRequired, (req, res) => {
     try {
       const db = getDb();
       const id = parseInt(req.params.id);
@@ -81,7 +81,7 @@ module.exports = function (getDb, { md5, sendError, localNow, extractImageUrls, 
   });
 
   // DELETE /api/ai/providers/:id
-  router.delete('/providers/:id', (req, res) => {
+  router.delete('/providers/:id', auth.adminRequired, (req, res) => {
     try {
       const db = getDb();
       const id = parseInt(req.params.id);
@@ -93,7 +93,7 @@ module.exports = function (getDb, { md5, sendError, localNow, extractImageUrls, 
   });
 
   // POST /api/ai/providers/:id/test
-  router.post('/providers/:id/test', async (req, res) => {
+  router.post('/providers/:id/test', auth.adminRequired, async (req, res) => {
     try {
       const db = getDb();
       const id = parseInt(req.params.id);
@@ -119,7 +119,7 @@ module.exports = function (getDb, { md5, sendError, localNow, extractImageUrls, 
   });
 
   // GET /api/ai/providers/:id/models
-  router.get('/providers/:id/models', async (req, res) => {
+  router.get('/providers/:id/models', auth.adminRequired, async (req, res) => {
     try {
       const db = getDb();
       const id = parseInt(req.params.id);
