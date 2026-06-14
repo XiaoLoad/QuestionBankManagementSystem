@@ -1,7 +1,32 @@
 const express = require('express');
 
-module.exports = function (getDb, { safeParse, sendError }) {
+module.exports = function (getDb, { safeParse, sendError }, auth) {
   const router = express.Router();
+
+  // GET /api/quiz/type-counts — 获取各分类下各题型的数量
+  router.get('/type-counts', (req, res) => {
+    try {
+      const db = getDb();
+      const { category } = req.query;
+
+      let where = 'WHERE deleted_at IS NULL';
+      const params = {};
+      if (category && category !== '全部') {
+        where += ' AND category = @category';
+        params.category = category;
+      }
+
+      const total = db.prepare(`SELECT COUNT(*) as cnt FROM data_questions ${where}`).get(params).cnt;
+      const rows = db.prepare(`SELECT type, COUNT(*) as cnt FROM data_questions ${where} GROUP BY type`).all(params);
+
+      const byType = {};
+      for (const row of rows) {
+        byType[row.type] = row.cnt;
+      }
+
+      res.json({ total, byType });
+    } catch (err) { sendError(res, err, 'GET /api/quiz/type-counts'); }
+  });
 
   // GET /api/quiz/questions — 获取刷题题目列表（不含答案）
   router.get('/questions', (req, res) => {
