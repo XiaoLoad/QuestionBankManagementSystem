@@ -76,7 +76,7 @@
                   <button
                     v-if="user.username !== 'admin'"
                     @click="toggleUserStatus(user)"
-                    class="p-1.5 text-notion-muted dark:text-notion-muted-dark hover:text-red-600 dark:hover:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                    class="p-1.5 text-notion-muted dark:text-notion-muted-dark hover:text-amber-600 dark:hover:text-amber-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
                     :title="user.is_active ? '禁用' : '启用'"
                   >
                     <svg v-if="user.is_active" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -84,6 +84,16 @@
                     </svg>
                     <svg v-else class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </button>
+                  <button
+                    v-if="user.username !== 'admin'"
+                    @click="deleteUser(user)"
+                    class="p-1.5 text-notion-muted dark:text-notion-muted-dark hover:text-red-600 dark:hover:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                    title="删除"
+                  >
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
                   </button>
                 </div>
@@ -476,6 +486,36 @@ async function toggleUserStatus(user) {
     }
   } catch (err) {
     toastStore.error(`${action}失败: ${err.message}`)
+  }
+}
+
+async function deleteUser(user) {
+  const confirmed = await confirmStore.show({
+    title: '删除用户',
+    message: `确定要永久删除用户 "${user.username}" 吗？此操作不可撤销。`,
+    confirmText: '删除',
+    cancelText: '取消'
+  })
+
+  if (!confirmed) return
+
+  try {
+    const res = await fetch(`/api/users/${user.id}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
+    })
+
+    if (res.ok) {
+      toastStore.success('用户已删除')
+      fetchUsers()
+    } else {
+      const data = await res.json()
+      toastStore.error(data.error || '删除失败')
+    }
+  } catch (err) {
+    toastStore.error(`删除失败: ${err.message}`)
   }
 }
 

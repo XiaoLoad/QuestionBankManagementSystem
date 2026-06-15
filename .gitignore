@@ -7,6 +7,7 @@ frontend/dist/
 .DS_Store
 *.log
 ARCHITECTURE.md
+DEPLOY.md
 .claude/
 .idea/
 db-config.json

@@ -148,7 +148,7 @@ module.exports = function (getDb, helpers, auth) {
 
   /**
    * DELETE /api/users/:id
-   * 禁用用户（软删除）
+   * 删除用户（永久删除）
    */
   router.delete('/:id', (req, res) => {
     try {
@@ -161,22 +161,21 @@ module.exports = function (getDb, helpers, auth) {
         return res.status(404).json({ error: '用户不存在' });
       }
 
-      // 不能禁用自己
+      // 不能删除自己
       if (parseInt(id) === req.user.id) {
-        return res.status(400).json({ error: '不能禁用自己的账号' });
+        return res.status(400).json({ error: '不能删除自己的账号' });
       }
 
-      // 不能禁用默认管理员
+      // 不能删除默认管理员
       if (user.username === 'admin') {
-        return res.status(400).json({ error: '不能禁用默认管理员账号' });
+        return res.status(400).json({ error: '不能删除默认管理员账号' });
       }
 
-      const now = localNow();
-      db.prepare('UPDATE users SET is_active = 0, updated_at = ? WHERE id = ?').run(now, id);
+      db.prepare('DELETE FROM users WHERE id = ?').run(id);
 
-      res.json({ message: '用户已禁用' });
+      res.json({ message: '用户已删除' });
     } catch (err) {
-      res.status(500).json({ error: '禁用用户失败: ' + err.message });
+      res.status(500).json({ error: '删除用户失败: ' + err.message });
     }
   });
 
