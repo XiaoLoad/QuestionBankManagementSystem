@@ -7,6 +7,7 @@ import { QUESTION_TYPES } from '@/composables/constants'
 import { useTrashStore } from '@/stores/trash'
 import ImportResultDialog from '@/components/ImportResultDialog.vue'
 import ImportCategoryDialog from '@/components/ImportCategoryDialog.vue'
+import SearchableSelect from '@/components/SearchableSelect.vue'
 
 defineOptions({ name: 'DataManagement' })
 
@@ -23,7 +24,7 @@ onMounted(async () => {
 
 // Export filters
 const exportFilters = reactive({
-  type: '',
+  types: [],
   category: '',
 })
 
@@ -58,7 +59,7 @@ function downloadBackup() {
 
 function exportJson() {
   const params = {}
-  if (exportFilters.type) params.type = exportFilters.type
+  if (exportFilters.types.length > 0) params.type = exportFilters.types.join(',')
   if (exportFilters.category) params.category = exportFilters.category
   api.exportJson(params)
 }
@@ -761,18 +762,31 @@ async function batchDeleteByDate() {
         </div>
         <div class="space-y-3 mb-4">
           <div>
-            <label class="block text-xs font-medium text-notion-muted dark:text-notion-muted-dark mb-1">题型筛选</label>
-            <select v-model="exportFilters.type" class="select-field w-full">
-              <option value="">全部题型</option>
-              <option v-for="t in QUESTION_TYPES" :key="t" :value="t">{{ t }}</option>
-            </select>
+            <label class="block text-xs font-medium text-notion-muted dark:text-notion-muted-dark mb-1">题型筛选（可多选）</label>
+            <div class="flex flex-wrap gap-1.5">
+              <button
+                v-for="t in QUESTION_TYPES"
+                :key="t"
+                type="button"
+                @click="exportFilters.types.includes(t) ? exportFilters.types.splice(exportFilters.types.indexOf(t), 1) : exportFilters.types.push(t)"
+                :class="[
+                  'px-2.5 py-1 rounded-btn text-xs font-medium border transition-colors',
+                  exportFilters.types.includes(t)
+                    ? 'border-notion-accent dark:border-notion-accent-dark bg-notion-accent/10 dark:bg-notion-accent-dark/15 text-notion-accent dark:text-notion-accent-dark'
+                    : 'border-notion-border dark:border-notion-border-dark text-notion-muted dark:text-notion-muted-dark hover:border-gray-300 dark:hover:border-gray-600'
+                ]"
+              >{{ t }}</button>
+            </div>
           </div>
           <div>
             <label class="block text-xs font-medium text-notion-muted dark:text-notion-muted-dark mb-1">分类筛选</label>
-            <select v-model="exportFilters.category" class="select-field w-full">
-              <option value="">全部分类</option>
-              <option v-for="c in categories" :key="c.id" :value="c.name">{{ c.name }}</option>
-            </select>
+            <SearchableSelect
+              :modelValue="exportFilters.category"
+              @update:modelValue="(v) => exportFilters.category = v"
+              :options="categories.map(c => ({ label: c.name, value: c.name }))"
+              allLabel="全部分类"
+              placeholder="全部分类"
+            />
           </div>
         </div>
         <button @click="exportJson" class="btn-primary w-full justify-center">
@@ -860,10 +874,13 @@ async function batchDeleteByDate() {
           </div>
           <div>
             <label class="block text-xs font-medium text-notion-muted dark:text-notion-muted-dark mb-1">分类</label>
-            <select v-model="batchFilters.category" class="select-field w-full">
-              <option value="">全部</option>
-              <option v-for="c in categories" :key="c.id" :value="c.name">{{ c.name }}</option>
-            </select>
+            <SearchableSelect
+              :modelValue="batchFilters.category"
+              @update:modelValue="(v) => batchFilters.category = v"
+              :options="categories.map(c => ({ label: c.name, value: c.name }))"
+              allLabel="全部"
+              placeholder="全部"
+            />
           </div>
         </div>
         <div class="flex justify-end">

@@ -41,7 +41,16 @@ module.exports = function (getDb, { md5, safeParse, sendError, localNow }) {
       const { type, category } = req.body || {};
       let where = 'WHERE deleted_at IS NULL';
       const params = {};
-      if (type && type !== '全部') { where += ' AND type = @type'; params.type = type; }
+      if (type && type !== '全部') {
+        const types = String(type).split(',').filter(Boolean);
+        if (types.length === 1) {
+          where += ' AND type = @type'; params.type = types[0];
+        } else if (types.length > 1) {
+          const placeholders = types.map((_, i) => `@type${i}`).join(',');
+          where += ` AND type IN (${placeholders})`;
+          types.forEach((t, i) => { params[`type${i}`] = t; });
+        }
+      }
       if (category && category !== '全部') { where += ' AND category = @category'; params.category = category; }
       const rows = db.prepare(`SELECT type, content, options, answers, category FROM data_questions ${where} ORDER BY created_at DESC`).all(params);
       const items = rows.map(r => ({

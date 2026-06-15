@@ -98,13 +98,37 @@ export function useApi() {
 
     // Backup
     downloadBackup: () => {
-      window.open('/api/backup', '_blank')
+      const toast = useToastStore()
+      const authStore = useAuthStore()
+      fetch('/api/backup', {
+        headers: { 'Authorization': `Bearer ${authStore.token}` },
+      })
+        .then(res => {
+          if (!res.ok) return res.json().then(d => { throw d })
+          return res.blob()
+        })
+        .then(blob => {
+          const url = URL.createObjectURL(blob)
+          const a = document.createElement('a')
+          a.href = url
+          a.download = `question-bank-backup-${new Date().toISOString().slice(0, 10)}.db`
+          a.click()
+          URL.revokeObjectURL(url)
+          toast.success('备份下载成功')
+        })
+        .catch(err => {
+          toast.error(err.error || '备份下载失败')
+        })
     },
     exportJson: (params = {}) => {
       const toast = useToastStore()
+      const authStore = useAuthStore()
       fetch('/api/backup/export', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authStore.token}`,
+        },
         body: JSON.stringify(params),
       })
         .then(res => {
