@@ -39,6 +39,7 @@ const editingQuestion = ref(null)
 const batchDeleting = ref(false)
 const batchCategoryLoading = ref(false)
 const batchError = ref('')
+const filtersExpanded = ref(false)
 
 const filters = reactive({
   search: '',
@@ -260,17 +261,22 @@ function savePageState() {
 function highlight(text) {
   return highlightText(text, filters.search)
 }
+
+// 检查是否有活跃的筛选条件
+const hasActiveFilters = computed(() => {
+  return filters.type || filters.category || filters.dateFrom || filters.dateTo
+})
 </script>
 
 <template>
   <div class="h-full flex flex-col">
     <!-- Header (fixed) -->
-    <div class="flex-shrink-0 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+    <div class="flex-shrink-0 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-3 sm:mb-4">
       <div>
-        <h1 class="text-2xl font-bold text-notion-text dark:text-notion-text-dark">题目管理</h1>
-        <p class="text-sm text-notion-muted dark:text-notion-muted-dark mt-1">共 {{ total }} 道题目</p>
+        <h1 class="text-xl sm:text-2xl font-bold text-notion-text dark:text-notion-text-dark">题目管理</h1>
+        <p class="text-xs sm:text-sm text-notion-muted dark:text-notion-muted-dark mt-1">共 {{ total }} 道题目</p>
       </div>
-      <button v-if="authStore.isAdmin" @click="addQuestion" class="btn-primary">
+      <button v-if="authStore.isAdmin" @click="addQuestion" class="btn-primary text-sm">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
         </svg>
@@ -279,79 +285,89 @@ function highlight(text) {
     </div>
 
     <!-- Filters (fixed) -->
-    <div class="flex-shrink-0 card mb-4">
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div class="sm:col-span-2 lg:col-span-1">
-          <label class="block text-xs font-medium text-notion-muted dark:text-notion-muted-dark mb-1.5">搜索</label>
+    <div class="flex-shrink-0 card mb-3 sm:mb-4 p-3 sm:p-6">
+      <!-- 搜索框始终显示 -->
+      <div class="flex items-center gap-2">
+        <div class="flex-1">
           <SearchInput v-model="filters.search" />
         </div>
-        <div>
-          <label class="block text-xs font-medium text-notion-muted dark:text-notion-muted-dark mb-1.5">题型</label>
-          <select v-model="filters.type" @change="onFilterChange" class="select-field w-full">
-            <option value="">全部</option>
-            <option v-for="t in QUESTION_TYPES" :key="t" :value="t">{{ t }}</option>
-          </select>
-        </div>
-        <div>
-          <label class="block text-xs font-medium text-notion-muted dark:text-notion-muted-dark mb-1.5">分类</label>
-          <SearchableSelect
-            :modelValue="filters.category"
-            @update:modelValue="(v) => { filters.category = v; onFilterChange() }"
-            :options="categories.map(c => ({ label: c.name, value: c.name }))"
-            allLabel="全部"
-            placeholder="全部"
-          />
-        </div>
-        <div>
-          <label class="block text-xs font-medium text-notion-muted dark:text-notion-muted-dark mb-1.5">排序</label>
-          <select v-model="filters.sort" @change="onFilterChange" class="select-field w-full">
-            <option value="desc">最新优先</option>
-            <option value="asc">最早优先</option>
-          </select>
-        </div>
-        <div>
-          <label class="block text-xs font-medium text-notion-muted dark:text-notion-muted-dark mb-1.5">起始日期</label>
-          <input v-model="filters.dateFrom" @change="onFilterChange" type="date" class="input-field" />
-        </div>
-        <div>
-          <label class="block text-xs font-medium text-notion-muted dark:text-notion-muted-dark mb-1.5">结束日期</label>
-          <input v-model="filters.dateTo" @change="onFilterChange" type="date" class="input-field" />
+        <button
+          @click="filtersExpanded = !filtersExpanded"
+          class="sm:hidden p-2 rounded-btn border border-notion-border dark:border-notion-border-dark text-notion-muted dark:text-notion-muted-dark hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors relative"
+          :class="hasActiveFilters ? 'border-notion-accent dark:border-notion-accent-dark' : ''"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+          </svg>
+          <span v-if="hasActiveFilters" class="absolute -top-1 -right-1 w-2 h-2 bg-notion-accent dark:bg-notion-accent-dark rounded-full"></span>
+        </button>
+      </div>
+
+      <!-- 其他筛选条件：PC 端始终显示，移动端可折叠 -->
+      <div :class="['mt-3', filtersExpanded ? 'block' : 'hidden sm:block']">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <div>
+            <label class="block text-xs font-medium text-notion-muted dark:text-notion-muted-dark mb-1.5">题型</label>
+            <select v-model="filters.type" @change="onFilterChange" class="select-field w-full text-sm">
+              <option value="">全部</option>
+              <option v-for="t in QUESTION_TYPES" :key="t" :value="t">{{ t }}</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-notion-muted dark:text-notion-muted-dark mb-1.5">分类</label>
+            <SearchableSelect
+              :modelValue="filters.category"
+              @update:modelValue="(v) => { filters.category = v; onFilterChange() }"
+              :options="categories.map(c => ({ label: c.name, value: c.name }))"
+              allLabel="全部"
+              placeholder="全部"
+            />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-notion-muted dark:text-notion-muted-dark mb-1.5">排序</label>
+            <select v-model="filters.sort" @change="onFilterChange" class="select-field w-full text-sm">
+              <option value="desc">最新优先</option>
+              <option value="asc">最早优先</option>
+            </select>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-xs font-medium text-notion-muted dark:text-notion-muted-dark mb-1.5">起始日期</label>
+              <input v-model="filters.dateFrom" @change="onFilterChange" type="date" class="input-field text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-notion-muted dark:text-notion-muted-dark mb-1.5">结束日期</label>
+              <input v-model="filters.dateTo" @change="onFilterChange" type="date" class="input-field text-sm" />
+            </div>
+          </div>
         </div>
       </div>
     </div>
 
     <!-- Batch actions (fixed, conditional, admin only) -->
-    <div v-if="authStore.isAdmin && selectedIds.length > 0" class="flex-shrink-0 flex flex-wrap items-center gap-3 mb-4 p-3 bg-notion-accent/5 dark:bg-notion-accent-dark/10 rounded-card border border-notion-accent/20 dark:border-notion-accent-dark/20">
-      <span class="text-sm font-medium text-notion-accent dark:text-notion-accent-dark">
-        已选择 {{ selectedIds.length }} 项
+    <div v-if="authStore.isAdmin && selectedIds.length > 0" class="flex-shrink-0 flex flex-wrap items-center gap-2 sm:gap-3 mb-3 sm:mb-4 p-2.5 sm:p-3 bg-notion-accent/5 dark:bg-notion-accent-dark/10 rounded-card border border-notion-accent/20 dark:border-notion-accent-dark/20">
+      <span class="text-xs sm:text-sm font-medium text-notion-accent dark:text-notion-accent-dark">
+        已选 {{ selectedIds.length }} 项
       </span>
       <div class="flex items-center gap-2">
-        <div class="w-44">
+        <div class="w-32 sm:w-44">
           <SearchableSelect
             v-model="batchCategoryValue"
             :options="categories.map(c => ({ label: c.name, value: c.name }))"
             placeholder="选择分类"
           />
         </div>
-        <button @click="batchUpdateCategory" :disabled="batchCategoryLoading" class="btn-secondary text-xs py-1.5 px-3">
-          <svg v-if="batchCategoryLoading" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-          </svg>
-          {{ batchCategoryLoading ? `修改中 (${selectedIds.length})...` : '修改分类' }}
+        <button @click="batchUpdateCategory" :disabled="batchCategoryLoading" class="btn-secondary text-xs py-1.5 px-2 sm:px-3">
+          {{ batchCategoryLoading ? '修改中...' : '改分类' }}
         </button>
       </div>
       <span v-if="batchError" class="text-xs text-red-500 dark:text-red-400">{{ batchError }}</span>
-      <button @click="batchDelete" :disabled="batchDeleting" class="btn-danger text-xs py-1.5 px-3">
-        <svg v-if="batchDeleting" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
-          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-        </svg>
-        {{ batchDeleting ? `删除中 (${selectedIds.length})...` : '批量删除' }}
+      <button @click="batchDelete" :disabled="batchDeleting" class="btn-danger text-xs py-1.5 px-2 sm:px-3">
+        {{ batchDeleting ? '删除中...' : '批量删除' }}
       </button>
     </div>
 
-    <!-- Table (scrollable, fills remaining space) -->
+    <!-- Table / Card list (scrollable, fills remaining space) -->
     <div class="flex-1 min-h-0 card p-0 overflow-hidden flex flex-col">
       <!-- Loading -->
       <div v-if="loading" class="flex-1 flex items-center justify-center">
@@ -359,17 +375,18 @@ function highlight(text) {
       </div>
 
       <!-- Empty -->
-      <div v-else-if="questions.length === 0" class="flex-1 flex flex-col items-center justify-center">
-        <svg class="w-12 h-12 text-notion-muted dark:text-notion-muted-dark mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div v-else-if="questions.length === 0" class="flex-1 flex flex-col items-center justify-center p-4">
+        <svg class="w-10 h-10 sm:w-12 sm:h-12 text-notion-muted dark:text-notion-muted-dark mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
         </svg>
-        <p class="text-notion-muted dark:text-notion-muted-dark">暂无题目</p>
-        <button @click="addQuestion" class="btn-primary mt-4">添加第一道题</button>
+        <p class="text-sm text-notion-muted dark:text-notion-muted-dark">暂无题目</p>
+        <button v-if="authStore.isAdmin" @click="addQuestion" class="btn-primary mt-4 text-sm">添加第一道题</button>
       </div>
 
-      <!-- Table content (scrollable area) -->
+      <!-- Content -->
       <template v-else>
-        <div class="flex-1 overflow-y-auto">
+        <!-- PC 端：表格布局 -->
+        <div class="hidden sm:block flex-1 overflow-y-auto">
           <table class="w-full text-sm">
             <thead class="sticky top-0 z-10 bg-notion-surface dark:bg-notion-surface-dark">
               <tr class="border-b border-notion-border dark:border-notion-border-dark">
@@ -434,6 +451,67 @@ function highlight(text) {
               </tr>
             </tbody>
           </table>
+        </div>
+
+        <!-- 移动端：卡片布局 -->
+        <div class="sm:hidden flex-1 overflow-y-auto">
+          <div class="divide-y divide-notion-border dark:divide-notion-border-dark">
+            <div
+              v-for="q in questions"
+              :key="q.id"
+              class="p-3 hover:bg-notion-surface/50 dark:hover:bg-notion-surface-dark/50 transition-colors"
+            >
+              <div class="flex items-start gap-3">
+                <!-- Checkbox -->
+                <input
+                  type="checkbox"
+                  :checked="selectedIds.includes(q.id)"
+                  @change="toggleSelect(q.id)"
+                  class="mt-1 accent-notion-accent dark:accent-notion-accent-dark"
+                />
+
+                <!-- Content -->
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-1.5 mb-1.5">
+                    <span :class="['badge text-[10px]', TYPE_COLORS[q.type] || 'badge-type']">{{ q.type }}</span>
+                    <span class="badge badge-category text-[10px]">{{ q.category || '默认' }}</span>
+                    <span
+                      v-if="categoryScoreMap[q.category] !== undefined"
+                      class="text-[10px] px-1 py-0.5 rounded bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 font-medium"
+                    >{{ categoryScoreMap[q.category] }}分</span>
+                    <span class="text-[10px] text-notion-muted dark:text-notion-muted-dark ml-auto">#{{ q.id }}</span>
+                  </div>
+                  <router-link
+                    :to="`/questions/${q.id}`"
+                    @click="savePageState"
+                    class="text-sm text-notion-text dark:text-notion-text-dark hover:text-notion-accent dark:hover:text-notion-accent-dark line-clamp-2 transition-colors block"
+                    v-html="highlight(q.content)"
+                  ></router-link>
+                  <div class="flex items-center justify-between mt-2">
+                    <span class="text-[10px] text-notion-muted dark:text-notion-muted-dark">{{ formatDateDisplay(q.created_at) }}</span>
+                    <div class="flex items-center gap-1">
+                      <button @click="savePageState(); router.push(`/questions/${q.id}`)" class="p-1.5 rounded-btn hover:bg-gray-100 dark:hover:bg-gray-800 text-notion-muted dark:text-notion-muted-dark transition-colors" title="查看详情">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                        </svg>
+                      </button>
+                      <button v-if="authStore.isAdmin" @click="editQuestion(q)" class="p-1.5 rounded-btn hover:bg-gray-100 dark:hover:bg-gray-800 text-notion-muted dark:text-notion-muted-dark transition-colors" title="编辑">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                        </svg>
+                      </button>
+                      <button v-if="authStore.isAdmin" @click="deleteQuestion(q)" class="p-1.5 rounded-btn hover:bg-red-50 dark:hover:bg-red-900/20 text-notion-muted dark:text-notion-muted-dark hover:text-red-500 transition-colors" title="删除">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Pagination -->

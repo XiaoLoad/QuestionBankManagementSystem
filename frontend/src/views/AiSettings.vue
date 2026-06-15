@@ -15,6 +15,7 @@ const presets = ref([])
 const loading = ref(true)
 const showForm = ref(false)
 const editingProvider = ref(null)
+const showPresetMenu = ref(false)
 const testingId = ref(null)
 const loadingModelsId = ref(null)
 
@@ -176,15 +177,16 @@ function cancelModelPicker() {
 </script>
 
 <template>
-  <div>
-    <div class="flex items-center justify-between mb-8">
+  <div @click="showPresetMenu = false">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-6 sm:mb-8">
       <div>
-        <h1 class="text-2xl font-bold text-notion-text dark:text-notion-text-dark">AI 设置</h1>
-        <p class="text-sm text-notion-muted dark:text-notion-muted-dark mt-1">管理 AI 服务商，用于题目答案校验</p>
+        <h1 class="text-xl sm:text-2xl font-bold text-notion-text dark:text-notion-text-dark">AI 设置</h1>
+        <p class="text-xs sm:text-sm text-notion-muted dark:text-notion-muted-dark mt-1">管理 AI 服务商，用于题目答案校验</p>
       </div>
       <div class="flex items-center gap-2">
-        <div class="relative group">
-          <button class="btn-secondary">
+        <div class="relative">
+          <button @click.stop="showPresetMenu = !showPresetMenu" class="btn-secondary text-sm">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
             </svg>
@@ -193,9 +195,9 @@ function cancelModelPicker() {
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
             </svg>
           </button>
-          <div class="absolute right-0 top-full mt-1 w-56 bg-white dark:bg-gray-800 rounded-card shadow-lg border border-notion-border dark:border-notion-border-dark py-1 z-10 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
+          <div v-if="showPresetMenu" class="absolute right-0 sm:left-auto top-full mt-1 w-56 bg-white dark:bg-gray-800 rounded-card shadow-lg border border-notion-border dark:border-notion-border-dark py-1 z-10 max-h-60 overflow-y-auto">
             <button
-              @click="openAddForm()"
+              @click="openAddForm(); showPresetMenu = false"
               class="w-full text-left px-4 py-2 text-sm text-notion-text dark:text-notion-text-dark hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
             >
               自定义服务商
@@ -204,7 +206,7 @@ function cancelModelPicker() {
             <button
               v-for="preset in presets"
               :key="preset.name"
-              @click="openAddForm(preset)"
+              @click="openAddForm(preset); showPresetMenu = false"
               class="w-full text-left px-4 py-2 text-sm text-notion-text dark:text-notion-text-dark hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center gap-2"
             >
               <span class="w-2 h-2 rounded-full bg-notion-accent dark:bg-notion-accent-dark" />
@@ -307,27 +309,27 @@ function cancelModelPicker() {
         </div>
 
         <div class="flex flex-wrap items-center gap-2">
-          <button @click="testConnection(p)" :disabled="testingId === p.id" class="btn-secondary text-xs py-1.5 px-3">
+          <button @click="testConnection(p)" :disabled="testingId === p.id" class="btn-secondary text-xs py-1.5 px-2 sm:px-3">
             <svg v-if="testingId === p.id" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
             </svg>
-            {{ testingId === p.id ? '测试中...' : '测试连通性' }}
+            {{ testingId === p.id ? '测试中...' : '测试' }}
           </button>
-          <button @click="fetchModels(p)" :disabled="loadingModelsId === p.id" class="btn-secondary text-xs py-1.5 px-3">
+          <button @click="fetchModels(p)" :disabled="loadingModelsId === p.id" class="btn-secondary text-xs py-1.5 px-2 sm:px-3">
             <svg v-if="loadingModelsId === p.id" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
             </svg>
-            {{ loadingModelsId === p.id ? '获取中...' : '获取模型列表' }}
+            {{ loadingModelsId === p.id ? '获取中...' : '模型列表' }}
           </button>
-          <button v-if="!p.is_default" @click="setDefault(p)" class="btn-secondary text-xs py-1.5 px-3">
+          <button v-if="!p.is_default" @click="setDefault(p)" class="btn-secondary text-xs py-1.5 px-2 sm:px-3">
             设为默认
           </button>
-          <button @click="openEditForm(p)" class="btn-secondary text-xs py-1.5 px-3">
+          <button @click="openEditForm(p)" class="btn-secondary text-xs py-1.5 px-2 sm:px-3">
             编辑
           </button>
-          <button @click="deleteProvider(p)" class="btn-secondary text-xs py-1.5 px-3 text-red-500 hover:text-red-600">
+          <button @click="deleteProvider(p)" class="btn-secondary text-xs py-1.5 px-2 sm:px-3 text-red-500 hover:text-red-600">
             删除
           </button>
         </div>

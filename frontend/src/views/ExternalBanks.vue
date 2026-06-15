@@ -445,7 +445,7 @@ onMounted(async () => {
             <p class="text-xs text-notion-muted dark:text-notion-muted-dark mt-0.5">最近 50 条查询记录</p>
           </div>
         </div>
-        <div class="flex items-center gap-2">
+        <div class="flex flex-wrap items-center gap-2">
           <!-- Filters -->
           <select
             v-model="logFilter.source"
@@ -468,7 +468,7 @@ onMounted(async () => {
           </select>
           <button
             @click="loadLogs()"
-            class="px-3 py-1.5 text-xs font-medium rounded-btn border border-notion-border dark:border-notion-border-dark text-notion-text dark:text-notion-text-dark hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            class="px-2 py-1.5 text-xs font-medium rounded-btn border border-notion-border dark:border-notion-border-dark text-notion-text dark:text-notion-text-dark hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
           >
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
@@ -476,12 +476,12 @@ onMounted(async () => {
           </button>
           <button
             @click="clearLogs()"
-            class="px-3 py-1.5 text-xs font-medium rounded-btn border border-red-200 dark:border-red-800/50 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-          >清理 30 天前</button>
+            class="px-2 py-1.5 text-xs font-medium rounded-btn border border-red-200 dark:border-red-800/50 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors whitespace-nowrap"
+          >清理30天前</button>
           <button
             @click="clearAllLogs()"
-            class="px-3 py-1.5 text-xs font-medium rounded-btn border border-red-200 dark:border-red-800/50 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-          >清空日志</button>
+            class="px-2 py-1.5 text-xs font-medium rounded-btn border border-red-200 dark:border-red-800/50 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+          >清空</button>
         </div>
       </div>
 

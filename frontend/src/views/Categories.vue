@@ -38,6 +38,9 @@ const deleteCat = ref(null)
 const deleteConfirmInput = ref('')
 const deleteLoading = ref(false)
 
+// Add category dialog (mobile)
+const showAddCategory = ref(false)
+
 // Search & Pagination
 const searchQuery = ref('')
 const page = ref(1)
@@ -236,13 +239,19 @@ async function doDelete() {
           </button>
         </div>
         <!-- Count -->
-        <span class="hidden sm:flex items-center text-xs text-notion-muted dark:text-notion-muted-dark flex-shrink-0 px-1">
-          {{ searchQuery ? `${filteredCategories.length} / ${categories.length}` : `${categories.length} 个` }}
+        <span class="flex items-center text-xs text-notion-muted dark:text-notion-muted-dark flex-shrink-0 px-1">
+          {{ searchQuery ? `${filteredCategories.length}/${categories.length}` : `${categories.length}个` }}
         </span>
-        <!-- Divider -->
+        <!-- Divider (PC) -->
         <div v-if="authStore.isAdmin" class="hidden sm:block w-px h-6 bg-notion-border dark:bg-notion-border-dark"></div>
-        <!-- Add form (admin only) -->
-        <form v-if="authStore.isAdmin" @submit.prevent="addCategory" class="flex gap-2 flex-shrink-0 items-center">
+        <!-- Add button (mobile) -->
+        <button v-if="authStore.isAdmin" @click="showAddCategory = true" class="sm:hidden btn-primary text-xs py-1.5 px-2.5 flex-shrink-0">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+          </svg>
+        </button>
+        <!-- Add form (PC only) -->
+        <form v-if="authStore.isAdmin" @submit.prevent="addCategory" class="hidden sm:flex gap-2 flex-shrink-0 items-center">
           <input
             v-model="newName"
             type="text"
@@ -300,40 +309,40 @@ async function doDelete() {
           >
             <!-- View mode -->
             <template v-if="editingId !== cat.id">
-              <div class="flex items-center gap-3 flex-1 min-w-0 cursor-pointer" @click="goToQuestions(cat)">
-                <div class="flex-shrink-0 w-10 h-10 rounded-btn bg-notion-accent/10 dark:bg-notion-accent-dark/15 flex items-center justify-center">
-                  <svg class="w-5 h-5 text-notion-accent dark:text-notion-accent-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div class="flex items-center gap-2 sm:gap-3 flex-1 min-w-0 cursor-pointer" @click="goToQuestions(cat)">
+                <div class="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-btn bg-notion-accent/10 dark:bg-notion-accent-dark/15 flex items-center justify-center">
+                  <svg class="w-4 h-4 sm:w-5 sm:h-5 text-notion-accent dark:text-notion-accent-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
                   </svg>
                 </div>
                 <div class="min-w-0">
-                  <p class="text-sm font-medium text-notion-text dark:text-notion-text-dark truncate hover:text-notion-accent dark:hover:text-notion-accent-dark transition-colors">{{ cat.name }}</p>
-                  <p class="text-xs text-notion-muted dark:text-notion-muted-dark mt-0.5">
-                    {{ cat.question_count }} 道题目
-                    <span v-if="cat.notes" class="ml-2 text-notion-muted/70 dark:text-notion-muted-dark/70">· {{ cat.notes.length > 30 ? cat.notes.slice(0, 30) + '...' : cat.notes }}</span>
+                  <p class="text-xs sm:text-sm font-medium text-notion-text dark:text-notion-text-dark truncate hover:text-notion-accent dark:hover:text-notion-accent-dark transition-colors">{{ cat.name }}</p>
+                  <p class="text-[10px] sm:text-xs text-notion-muted dark:text-notion-muted-dark mt-0.5">
+                    {{ cat.question_count }}题
+                    <span v-if="cat.notes" class="hidden sm:inline ml-2 text-notion-muted/70 dark:text-notion-muted-dark/70">· {{ cat.notes.length > 30 ? cat.notes.slice(0, 30) + '...' : cat.notes }}</span>
                   </p>
                 </div>
               </div>
-              <div class="flex items-center gap-2 flex-shrink-0 ml-3">
+              <div class="flex items-center gap-1 sm:gap-2 flex-shrink-0 ml-2 sm:ml-3">
                 <span
                   v-if="cat.score !== null && cat.score !== undefined"
-                  class="inline-flex items-center px-2.5 py-1 rounded-badge bg-amber-50 dark:bg-amber-900/30 text-xs font-medium text-amber-600 dark:text-amber-400"
-                >{{ cat.score }} 分</span>
-                <span class="inline-flex items-center px-2.5 py-1 rounded-badge bg-notion-surface dark:bg-notion-surface-dark text-xs font-medium text-notion-text dark:text-notion-text-dark">
+                  class="hidden sm:inline-flex items-center px-2.5 py-1 rounded-badge bg-amber-50 dark:bg-amber-900/30 text-xs font-medium text-amber-600 dark:text-amber-400"
+                >{{ cat.score }}分</span>
+                <span class="inline-flex items-center px-1.5 py-0.5 sm:px-2.5 sm:py-1 rounded-badge bg-notion-surface dark:bg-notion-surface-dark text-[10px] sm:text-xs font-medium text-notion-text dark:text-notion-text-dark">
                   {{ cat.question_count }}
                 </span>
-                <button v-if="authStore.isAdmin" @click="openMove(cat)" class="p-1.5 rounded-btn hover:bg-blue-50 dark:hover:bg-blue-900/20 text-notion-muted dark:text-notion-muted-dark hover:text-blue-500 transition-colors" title="移动题目">
+                <button v-if="authStore.isAdmin" @click="openMove(cat)" class="hidden sm:block p-1.5 rounded-btn hover:bg-blue-50 dark:hover:bg-blue-900/20 text-notion-muted dark:text-notion-muted-dark hover:text-blue-500 transition-colors" title="移动题目">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"/>
                   </svg>
                 </button>
                 <button v-if="authStore.isAdmin" @click="startEdit(cat)" class="p-1.5 rounded-btn hover:bg-gray-100 dark:hover:bg-gray-800 text-notion-muted dark:text-notion-muted-dark transition-colors" title="编辑">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                   </svg>
                 </button>
                 <button v-if="authStore.isAdmin && cat.name !== '默认'" @click="openDelete(cat)" class="p-1.5 rounded-btn hover:bg-red-50 dark:hover:bg-red-900/20 text-notion-muted dark:text-notion-muted-dark hover:text-red-500 transition-colors" title="删除">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                   </svg>
                 </button>
@@ -342,10 +351,10 @@ async function doDelete() {
 
             <!-- Edit mode -->
             <template v-else>
-              <form @submit.prevent="saveEdit" class="flex items-center gap-3 flex-1">
-                <input v-model="editingName" type="text" class="input-field flex-1" autofocus />
-                <input v-model="editingNotes" type="text" class="input-field w-40" placeholder="备注" />
-                <input v-model="editingScore" type="number" min="0" class="input-field w-20" placeholder="分数" />
+              <form @submit.prevent="saveEdit" class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 flex-1 w-full">
+                <input v-model="editingName" type="text" class="input-field flex-1 text-sm" autofocus />
+                <input v-model="editingNotes" type="text" class="input-field sm:w-40 text-sm" placeholder="备注" />
+                <input v-model="editingScore" type="number" min="0" class="input-field sm:w-20 text-sm" placeholder="分数" />
                 <div class="flex gap-2 flex-shrink-0">
                   <button type="submit" class="btn-primary text-xs py-1.5 px-3">保存</button>
                   <button type="button" @click="cancelEdit" class="btn-secondary text-xs py-1.5 px-3">取消</button>
@@ -438,6 +447,36 @@ async function doDelete() {
                 {{ deleteLoading ? '删除中...' : '确认删除' }}
               </button>
             </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <!-- Add Category Dialog (mobile) -->
+    <Teleport to="body">
+      <Transition name="fade">
+        <div v-if="showAddCategory" class="fixed inset-0 z-[9998] flex items-center justify-center p-4">
+          <div class="absolute inset-0 bg-black/50" @click="showAddCategory = false" />
+          <div class="relative bg-white dark:bg-gray-800 rounded-card shadow-xl border border-notion-border dark:border-notion-border-dark max-w-md w-full p-4 sm:p-6">
+            <h3 class="text-base sm:text-lg font-semibold text-notion-text dark:text-notion-text-dark mb-4">添加分类</h3>
+            <form @submit.prevent="addCategory(); showAddCategory = false" class="space-y-3">
+              <div>
+                <label class="block text-xs sm:text-sm font-medium text-notion-text dark:text-notion-text-dark mb-1.5">分类名称 *</label>
+                <input v-model="newName" type="text" class="input-field w-full" placeholder="输入分类名称" required />
+              </div>
+              <div>
+                <label class="block text-xs sm:text-sm font-medium text-notion-text dark:text-notion-text-dark mb-1.5">备注（可选）</label>
+                <input v-model="newNotes" type="text" class="input-field w-full" placeholder="输入备注" />
+              </div>
+              <div>
+                <label class="block text-xs sm:text-sm font-medium text-notion-text dark:text-notion-text-dark mb-1.5">分数（可选）</label>
+                <input v-model="newScore" type="number" min="0" class="input-field w-full" placeholder="输入分数" />
+              </div>
+              <div class="flex justify-end gap-3 pt-2">
+                <button type="button" @click="showAddCategory = false" class="btn-secondary">取消</button>
+                <button type="submit" class="btn-primary">添加</button>
+              </div>
+            </form>
           </div>
         </div>
       </Transition>
