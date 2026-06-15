@@ -52,6 +52,12 @@ module.exports = function (getDb, helpers, auth) {
       const now = localNow();
       db.prepare('UPDATE users SET last_login_at = ? WHERE id = ?').run(now, user.id);
 
+      // 记录登录日志
+      try {
+        db.prepare('INSERT INTO user_activity_logs (user_id, action, created_at) VALUES (?, ?, ?)')
+          .run(user.id, 'login', now);
+      } catch {}
+
       res.json({
         token,
         user: {

@@ -84,6 +84,7 @@ export function useApi() {
       return request(`/api/quiz/questions?${qs}`)
     },
     checkQuizAnswer: (id, answer) => request('/api/quiz/check', { method: 'POST', body: JSON.stringify({ id, answer }) }),
+    reportQuizResult: (result) => request('/api/quiz/result', { method: 'POST', body: JSON.stringify(result) }),
 
     // Categories
     getCategories: () => request('/api/categories'),

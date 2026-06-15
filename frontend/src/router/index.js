@@ -69,6 +69,12 @@ const routes = [
     meta: { title: '用户管理', requiresAdmin: true }
   },
   {
+    path: '/users/:id/logs',
+    name: 'UserActivityLog',
+    component: () => import('@/views/UserActivityLog.vue'),
+    meta: { title: '用户活动日志', requiresAdmin: true }
+  },
+  {
     path: '/about',
     name: 'About',
     component: () => import('@/views/About.vue'),

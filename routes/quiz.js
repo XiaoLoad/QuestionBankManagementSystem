@@ -1,6 +1,6 @@
 const express = require('express');
 
-module.exports = function (getDb, { safeParse, sendError }, auth) {
+module.exports = function (getDb, { safeParse, sendError, localNow }, auth) {
   const router = express.Router();
 
   // GET /api/quiz/type-counts — 获取各分类下各题型的数量
@@ -61,6 +61,21 @@ module.exports = function (getDb, { safeParse, sendError }, auth) {
         images: row.images ? safeParse(row.images) : [],
       }));
 
+      // 记录刷题开始日志
+      if (req.user && items.length > 0) {
+        try {
+          const types = [...new Set(items.map(i => i.type))];
+          const cats = [...new Set(items.map(i => i.category).filter(Boolean))];
+          db.prepare('INSERT INTO user_activity_logs (user_id, action, detail, created_at) VALUES (?, ?, ?, ?)')
+            .run(req.user.id, 'quiz_start', JSON.stringify({
+              category: category || '全部',
+              types: types,
+              categories: cats,
+              count: items.length,
+            }), localNow());
+        } catch {}
+      }
+
       res.json({ items, total: items.length });
     } catch (err) { sendError(res, err, 'GET /api/quiz/questions'); }
   });
@@ -110,6 +125,27 @@ module.exports = function (getDb, { safeParse, sendError }, auth) {
 
       res.json({ correct, correctAnswers, userAnswer: answer });
     } catch (err) { sendError(res, err, 'POST /api/quiz/check'); }
+  });
+
+  // POST /api/quiz/result — 记录刷题结果
+  router.post('/result', (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ error: '未登录' });
+
+      const db = getDb();
+      const { total, correct, accuracy, category, wrongCount } = req.body;
+
+      db.prepare('INSERT INTO user_activity_logs (user_id, action, detail, created_at) VALUES (?, ?, ?, ?)')
+        .run(req.user.id, 'quiz_end', JSON.stringify({
+          total: total || 0,
+          correct: correct || 0,
+          accuracy: accuracy || 0,
+          wrongCount: wrongCount || 0,
+          category: category || '全部',
+        }), localNow());
+
+      res.json({ message: '刷题结果已记录' });
+    } catch (err) { sendError(res, err, 'POST /api/quiz/result'); }
   });
 
   return router;

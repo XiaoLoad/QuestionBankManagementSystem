@@ -302,6 +302,14 @@ function endQuiz() {
   }
   state.value = 'result'
   saveProgress()
+  // 上报刷题结果
+  api.reportQuizResult({
+    total: questions.value.length,
+    correct: correctCount.value,
+    accuracy: accuracy.value,
+    wrongCount: wrongList.value.length,
+    category: selectedCategory.value || '全部',
+  }).catch(() => {})
 }
 
 function restart() {

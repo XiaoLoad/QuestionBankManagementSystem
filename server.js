@@ -160,6 +160,20 @@ function initDatabase(db) {
     )`);
   } catch {}
 
+  // Ensure user_activity_logs table exists
+  try {
+    db.exec(`CREATE TABLE IF NOT EXISTS user_activity_logs (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id     INTEGER NOT NULL,
+      action      TEXT NOT NULL,
+      detail      TEXT,
+      created_at  DATETIME,
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    )`);
+  } catch {}
+  try { db.exec(`CREATE INDEX IF NOT EXISTS idx_activity_logs_user ON user_activity_logs(user_id)`); } catch {}
+  try { db.exec(`CREATE INDEX IF NOT EXISTS idx_activity_logs_created ON user_activity_logs(created_at)`); } catch {}
+
   // Create default admin user if not exists
   try {
     const adminExists = db.prepare('SELECT id FROM users WHERE username = ?').get('admin');
@@ -249,6 +263,10 @@ app.use('/api/auth', authRouter);
 // User management routes (admin only)
 const usersRouter = require('./routes/users')(getDb, helpers, auth);
 app.use('/api/users', usersRouter);
+
+// Activity logs routes (admin only)
+const activityLogsRouter = require('./routes/activity-logs')(getDb, helpers, auth);
+app.use('/api/activity-logs', activityLogsRouter);
 
 // Routes with read access for all users, write access for admin only
 const questionsRouter = require('./routes/questions')(getDb, helpers, auth);
