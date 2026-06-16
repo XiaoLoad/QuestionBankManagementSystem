@@ -20,11 +20,12 @@ const loading = ref(false)
 
 // Setup
 const categories = ref([])
-const selectedCategory = ref(quizStore.setupConfig.selectedCategory)
+const selectedCategories = ref(quizStore.setupConfig.selectedCategories || [])
 const selectedTypes = ref([...quizStore.setupConfig.selectedTypes])
 const selectedMode = ref(quizStore.setupConfig.selectedMode)
 const questionLimit = ref(quizStore.setupConfig.questionLimit)
 const autoAdvance = ref(quizStore.setupConfig.autoAdvance)
+const reviewMode = ref(quizStore.setupConfig.reviewMode || false)
 
 // Quiz
 const navigatorRef = ref(null)
@@ -61,13 +62,13 @@ const availableCount = computed(() => {
 })
 
 // 监听分类变化，加载题型数量
-watch(selectedCategory, async () => {
+watch(selectedCategories, async () => {
   await loadTypeCounts()
-  // 自动调整题目数量上限
-  if (questionLimit.value > availableCount.value && availableCount.value > 0) {
+  // 自动调整题目数量为最大值
+  if (availableCount.value > 0) {
     questionLimit.value = availableCount.value
   }
-})
+}, { deep: true })
 
 // 监听题型选择变化，调整题目数量上限
 watch(selectedTypes, () => {
@@ -76,10 +77,16 @@ watch(selectedTypes, () => {
   }
 }, { deep: true })
 
+function addCategory(val) {
+  if (val && !selectedCategories.value.includes(val)) {
+    selectedCategories.value.push(val)
+  }
+}
+
 async function loadTypeCounts() {
   typeCountsLoading.value = true
   try {
-    typeCounts.value = await api.getTypeCounts(selectedCategory.value)
+    typeCounts.value = await api.getTypeCounts(selectedCategories.value.join(','))
   } catch (e) {
     typeCounts.value = {}
   } finally {
@@ -102,7 +109,7 @@ function restoreQuizState() {
   questions.value = quizStore.questions
   currentIndex.value = quizStore.currentIndex
   records.value = quizStore.records
-  selectedCategory.value = quizStore.setupConfig.selectedCategory
+  selectedCategories.value = quizStore.setupConfig.selectedCategories || []
   selectedTypes.value = [...quizStore.setupConfig.selectedTypes]
   selectedMode.value = quizStore.setupConfig.selectedMode
   questionLimit.value = quizStore.setupConfig.questionLimit
@@ -126,11 +133,12 @@ function saveProgress() {
   quizStore.currentIndex = currentIndex.value
   quizStore.records = records.value
   quizStore.setupConfig = {
-    selectedCategory: selectedCategory.value,
+    selectedCategories: [...selectedCategories.value],
     selectedTypes: [...selectedTypes.value],
     selectedMode: selectedMode.value,
     questionLimit: questionLimit.value,
     autoAdvance: autoAdvance.value,
+    reviewMode: reviewMode.value,
   }
   quizStore.saveProgress()
 }
@@ -146,7 +154,7 @@ async function startQuiz() {
   loading.value = true
   try {
     const res = await api.getQuizQuestions({
-      category: selectedCategory.value,
+      category: selectedCategories.value.join(','),
       type: selectedTypes.value.length > 0 ? selectedTypes.value.join(',') : '',
       mode: selectedMode.value,
       limit: questionLimit.value,
@@ -185,6 +193,28 @@ function resetAnswer() {
   } else {
     userAnswer.value = ''
   }
+  // 复习模式：自动获取答案并显示
+  if (reviewMode.value) {
+    showReviewAnswer()
+  }
+}
+
+async function showReviewAnswer() {
+  const q = currentQuestion.value
+  if (!q) return
+  try {
+    const res = await api.checkQuizAnswer(q.id, null)
+    // 复习模式：直接显示正确答案，不判断对错
+    checkResult.value = {
+      correct: true,  // 显示为正确（绿色高亮）
+      correctAnswers: res.correctAnswers,
+      userAnswer: res.correctAnswers,  // 用户答案设为正确答案
+    }
+    answered.value = true
+    // 不记录到 records 中
+  } catch (e) {
+    // handled
+  }
 }
 
 function selectOption(opt) {
@@ -199,14 +229,14 @@ function selectOption(opt) {
     }
   } else {
     userAnswer.value = opt
-    if (autoAdvance.value) submitAndAutoAdvance()
+    if (autoAdvance.value || reviewMode.value) submitAndAutoAdvance()
   }
 }
 
 function selectBool(val) {
   if (answered.value) return
   userAnswer.value = val
-  if (autoAdvance.value) submitAndAutoAdvance()
+  if (autoAdvance.value || reviewMode.value) submitAndAutoAdvance()
 }
 
 async function submitAndAutoAdvance() {
@@ -308,7 +338,7 @@ function endQuiz() {
     correct: correctCount.value,
     accuracy: accuracy.value,
     wrongCount: wrongList.value.length,
-    category: selectedCategory.value || '全部',
+    category: selectedCategories.value.length > 0 ? selectedCategories.value.join(',') : '全部',
   }).catch(() => {})
 }
 
@@ -387,12 +417,30 @@ function getBoolClass(val) {
       <h2 class="text-sm sm:text-base font-semibold text-notion-text dark:text-notion-text-dark mb-3 sm:mb-4">刷题设置</h2>
       <div class="space-y-3 sm:space-y-4">
         <div>
-          <label class="block text-xs sm:text-sm font-medium text-notion-text dark:text-notion-text-dark mb-1.5">选择分类</label>
+          <label class="block text-xs sm:text-sm font-medium text-notion-text dark:text-notion-text-dark mb-1.5">
+            选择分类（可多选，不选则全部）
+          </label>
+          <!-- 已选分类标签 -->
+          <div v-if="selectedCategories.length > 0" class="flex flex-wrap gap-1.5 mb-2">
+            <span
+              v-for="cat in selectedCategories"
+              :key="cat"
+              class="inline-flex items-center gap-1 px-2 py-0.5 rounded-badge text-xs bg-notion-accent/10 dark:bg-notion-accent-dark/15 text-notion-accent dark:text-notion-accent-dark"
+            >
+              {{ cat }}
+              <button @click="selectedCategories.splice(selectedCategories.indexOf(cat), 1)" class="hover:text-red-500 transition-colors">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </span>
+          </div>
+          <!-- 搜索添加分类 -->
           <SearchableSelect
-            v-model="selectedCategory"
-            :options="categories.map(c => ({ label: c.name + '（' + c.question_count + '题）', value: c.name }))"
-            allLabel="全部分类"
-            placeholder="全部分类"
+            modelValue=""
+            @update:modelValue="addCategory"
+            :options="categories.filter(c => !selectedCategories.includes(c.name)).map(c => ({ label: c.name + '（' + c.question_count + '题）', value: c.name }))"
+            placeholder="搜索并添加分类..."
           />
         </div>
         <div>
@@ -454,6 +502,25 @@ function getBoolClass(val) {
           <span class="text-xs sm:text-sm text-notion-text dark:text-notion-text-dark">自动下一题</span>
           <span class="text-xs text-notion-muted dark:text-notion-muted-dark hidden sm:inline">单选/判断题答完自动跳转</span>
         </label>
+        <label class="flex items-center gap-2 sm:gap-3 cursor-pointer">
+          <button
+            type="button"
+            @click="reviewMode = !reviewMode"
+            :class="[
+              'relative w-10 h-5 rounded-full transition-colors flex-shrink-0',
+              reviewMode ? 'bg-notion-accent dark:bg-notion-accent-dark' : 'bg-gray-200 dark:bg-gray-700'
+            ]"
+          >
+            <span
+              :class="[
+                'absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform',
+                reviewMode ? 'translate-x-5' : 'translate-x-0'
+              ]"
+            />
+          </button>
+          <span class="text-xs sm:text-sm text-notion-text dark:text-notion-text-dark">复习模式</span>
+          <span class="text-xs text-notion-muted dark:text-notion-muted-dark hidden sm:inline">直接显示答案，用于复习巩固</span>
+        </label>
         <button @click="startQuiz" :disabled="loading || availableCount === 0" class="btn-primary w-full justify-center py-3">
           {{ loading ? '加载中...' : availableCount === 0 ? '该分类下没有题目' : '开始刷题' }}
         </button>
@@ -503,8 +570,8 @@ function getBoolClass(val) {
             <button
               v-for="(opt, i) in currentQuestion.options"
               :key="i"
-              @click="selectOption(opt)"
-              :class="['w-full text-left px-3 sm:px-4 py-3 sm:py-3 rounded-btn border-2 transition-all text-sm min-h-[44px]', getOptionClass(opt)]"
+              @click="!reviewMode && selectOption(opt)"
+              :class="['w-full text-left px-3 sm:px-4 py-3 sm:py-3 rounded-btn border-2 transition-all text-sm min-h-[44px]', reviewMode ? getOptionClass(opt) + ' cursor-default' : getOptionClass(opt)]"
             >
               <span class="font-medium mr-2 text-notion-muted dark:text-notion-muted-dark">{{ String.fromCharCode(65 + i) }}.</span>
               <span class="break-words">{{ opt }}</span>
@@ -525,7 +592,14 @@ function getBoolClass(val) {
 
           <!-- 填空 / 简答 -->
           <div v-if="['填空题', '简答题'].includes(currentQuestion.type)" class="mb-3 sm:mb-4">
+            <!-- 复习模式：直接显示答案 -->
+            <div v-if="reviewMode && answered && checkResult" class="p-3 sm:p-4 rounded-btn bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
+              <p class="text-xs text-green-600 dark:text-green-400 font-medium mb-2">正确答案：</p>
+              <p class="text-sm sm:text-base text-notion-text dark:text-notion-text-dark">{{ checkResult.correctAnswers?.join('、') }}</p>
+            </div>
+            <!-- 答题模式：输入框 -->
             <textarea
+              v-else
               v-model="userAnswer"
               rows="3"
               class="input-field w-full text-sm sm:text-base"
@@ -534,8 +608,8 @@ function getBoolClass(val) {
             />
           </div>
 
-          <!-- Answer feedback -->
-          <div v-if="answered && checkResult" class="mb-3 sm:mb-4 p-3 sm:p-4 rounded-btn" :class="checkResult.correct ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800' : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'">
+          <!-- Answer feedback (非填空/简答题的复习模式，或答题模式) -->
+          <div v-if="answered && checkResult && !(reviewMode && ['填空题', '简答题'].includes(currentQuestion.type))" class="mb-3 sm:mb-4 p-3 sm:p-4 rounded-btn" :class="checkResult.correct ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800' : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'">
             <div class="flex items-center gap-2 mb-1">
               <span v-if="checkResult.correct" class="text-green-600 dark:text-green-400 font-medium text-sm">回答正确</span>
               <span v-else class="text-red-600 dark:text-red-400 font-medium text-sm">回答错误</span>
@@ -551,10 +625,10 @@ function getBoolClass(val) {
         <div class="flex-shrink-0 flex items-center justify-between pt-3 sm:pt-4 border-t border-notion-border dark:border-notion-border-dark gap-2">
           <button @click="goPrev" :disabled="currentIndex === 0" class="btn-secondary py-2.5 px-4" :class="currentIndex === 0 ? 'opacity-50' : ''">上一题</button>
           <template v-if="!answered">
-            <button v-if="!autoAdvance || ['多选题', '填空题', '简答题'].includes(currentQuestion.type)" @click="submitAnswer()" :disabled="loading" class="btn-primary py-2.5 px-4">
+            <button v-if="(!autoAdvance && !reviewMode) || ['多选题', '填空题', '简答题'].includes(currentQuestion.type)" @click="submitAnswer()" :disabled="loading" class="btn-primary py-2.5 px-4">
               {{ loading ? '提交中...' : '提交答案' }}
             </button>
-            <span v-else class="text-xs text-notion-muted dark:text-notion-muted-dark">选择后自动判题</span>
+            <span v-else class="text-xs text-notion-muted dark:text-notion-muted-dark">{{ reviewMode ? '复习模式：选择后显示答案' : '选择后自动判题' }}</span>
           </template>
           <button v-else @click="goNext" class="btn-primary py-2.5 px-4">
             {{ currentIndex < questions.length - 1 ? '下一题' : '查看结果' }}

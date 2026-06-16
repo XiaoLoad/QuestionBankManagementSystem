@@ -3,6 +3,15 @@ const express = require('express');
 module.exports = function (getDb, { safeParse, sendError, localNow }, auth) {
   const router = express.Router();
 
+  // 去除选项前缀: "A.教育职能" → "教育职能", "A.A.教育职能" → "教育职能"
+  function stripOptionPrefix(val) {
+    if (!val) return val
+    if (Array.isArray(val)) {
+      return val.map(v => String(v).replace(/^[A-Za-z][.\s、·:：]+/, '').trim())
+    }
+    return String(val).replace(/^[A-Za-z][.\s、·:：]+/, '').trim()
+  }
+
   // GET /api/quiz/type-counts — 获取各分类下各题型的数量
   router.get('/type-counts', (req, res) => {
     try {
@@ -12,8 +21,14 @@ module.exports = function (getDb, { safeParse, sendError, localNow }, auth) {
       let where = 'WHERE deleted_at IS NULL';
       const params = {};
       if (category && category !== '全部') {
-        where += ' AND category = @category';
-        params.category = category;
+        const categories = String(category).split(',').filter(Boolean);
+        if (categories.length === 1) {
+          where += ' AND category = @category'; params.category = categories[0];
+        } else if (categories.length > 1) {
+          const placeholders = categories.map((_, i) => `@cat${i}`).join(',');
+          where += ` AND category IN (${placeholders})`;
+          categories.forEach((c, i) => { params[`cat${i}`] = c; });
+        }
       }
 
       const total = db.prepare(`SELECT COUNT(*) as cnt FROM data_questions ${where}`).get(params).cnt;
@@ -37,7 +52,16 @@ module.exports = function (getDb, { safeParse, sendError, localNow }, auth) {
 
       let where = 'WHERE deleted_at IS NULL';
       const params = {};
-      if (category && category !== '全部') { where += ' AND category = @category'; params.category = category; }
+      if (category && category !== '全部') {
+        const categories = String(category).split(',').filter(Boolean);
+        if (categories.length === 1) {
+          where += ' AND category = @category'; params.category = categories[0];
+        } else if (categories.length > 1) {
+          const placeholders = categories.map((_, i) => `@cat${i}`).join(',');
+          where += ` AND category IN (${placeholders})`;
+          categories.forEach((c, i) => { params[`cat${i}`] = c; });
+        }
+      }
       if (type) {
         const types = String(type).split(',').filter(Boolean);
         if (types.length === 1) {
@@ -57,7 +81,7 @@ module.exports = function (getDb, { safeParse, sendError, localNow }, auth) {
         type: row.type,
         content: row.content,
         category: row.category,
-        options: row.options ? safeParse(row.options) : null,
+        options: row.options ? stripOptionPrefix(safeParse(row.options)) : null,
         images: row.images ? safeParse(row.images) : [],
       }));
 
@@ -90,15 +114,15 @@ module.exports = function (getDb, { safeParse, sendError, localNow }, auth) {
       const row = db.prepare('SELECT id, type, options, answers FROM data_questions WHERE id = ? AND deleted_at IS NULL').get(id);
       if (!row) return res.status(404).json({ error: '题目不存在' });
 
-      const correctAnswers = row.answers ? safeParse(row.answers) : [];
-      const options = row.options ? safeParse(row.options) : [];
+      const correctAnswers = row.answers ? stripOptionPrefix(safeParse(row.answers)) : [];
+      const options = row.options ? stripOptionPrefix(safeParse(row.options)) : [];
 
       // 用户未作答
       if (answer === undefined || answer === null || (Array.isArray(answer) && answer.length === 0) || answer === '') {
         return res.json({ correct: false, correctAnswers, userAnswer: answer });
       }
 
-      const userAns = Array.isArray(answer) ? answer.map(s => String(s).trim()) : [String(answer).trim()];
+      const userAns = Array.isArray(answer) ? answer.map(s => stripOptionPrefix(String(s).trim())) : [stripOptionPrefix(String(answer).trim())];
       const correctAns = correctAnswers.map(s => String(s).trim());
 
       let correct = false;
