@@ -16,6 +16,7 @@ export const useQuizStore = defineStore('quiz', () => {
     selectedMode: 'random',
     questionLimit: 20,
     autoAdvance: true,
+    autoAdvanceDelay: 2,
   })
 
   const hasProgress = computed(() => {

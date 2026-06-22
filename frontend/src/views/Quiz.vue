@@ -26,6 +26,7 @@ const selectedTypes = ref([...quizStore.setupConfig.selectedTypes])
 const selectedMode = ref(quizStore.setupConfig.selectedMode)
 const questionLimit = ref(quizStore.setupConfig.questionLimit)
 const autoAdvance = ref(quizStore.setupConfig.autoAdvance)
+const autoAdvanceDelay = ref(quizStore.setupConfig.autoAdvanceDelay ?? 2)
 const reviewMode = ref(quizStore.setupConfig.reviewMode || false)
 
 // Quiz
@@ -65,18 +66,14 @@ const availableCount = computed(() => {
 // 监听分类变化，加载题型数量
 watch(selectedCategories, async () => {
   await loadTypeCounts()
-  // 自动调整题目数量为最大值
-  if (availableCount.value > 0) {
-    questionLimit.value = availableCount.value
-  }
 }, { deep: true })
 
-// 监听题型选择变化，调整题目数量上限
-watch(selectedTypes, () => {
-  if (questionLimit.value > availableCount.value && availableCount.value > 0) {
-    questionLimit.value = availableCount.value
+// 监听可选题目数变化，实时同步题目数量
+watch(availableCount, (val) => {
+  if (val > 0) {
+    questionLimit.value = val
   }
-}, { deep: true })
+})
 
 function addCategory(val) {
   if (val && !selectedCategories.value.includes(val)) {
@@ -118,6 +115,7 @@ function restoreQuizState() {
   selectedMode.value = quizStore.setupConfig.selectedMode
   questionLimit.value = quizStore.setupConfig.questionLimit
   autoAdvance.value = quizStore.setupConfig.autoAdvance
+  autoAdvanceDelay.value = quizStore.setupConfig.autoAdvanceDelay ?? 2
 
   // 恢复当前题的显示状态
   const rec = records.value.find(r => r.id === currentQuestion.value?.id)
@@ -143,6 +141,7 @@ function saveProgress() {
     selectedMode: selectedMode.value,
     questionLimit: questionLimit.value,
     autoAdvance: autoAdvance.value,
+    autoAdvanceDelay: autoAdvanceDelay.value,
     reviewMode: reviewMode.value,
   }
   quizStore.saveProgress()
@@ -296,15 +295,16 @@ async function submitAnswer(autoAdvance = false) {
       correctAnswer: res.correctAnswers,
     })
     saveProgress()
-    if (autoAdvance) {
-      countdown.value = 2
+    if (autoAdvance && res.correct) {
+      const delay = Math.max(1, autoAdvanceDelay.value)
+      countdown.value = delay
       countdownTimer = setInterval(() => {
         countdown.value--
         if (countdown.value <= 0) { clearInterval(countdownTimer); countdownTimer = null }
       }, 1000)
       autoAdvanceTimer = setTimeout(() => {
         goNext()
-      }, 2000)
+      }, delay * 1000)
     }
   } catch (e) {
     // handled
@@ -501,7 +501,8 @@ function getBoolClass(val) {
               题目数量
               <span v-if="availableCount > 0" class="text-notion-muted dark:text-notion-muted-dark">/ {{ availableCount }}</span>
             </label>
-            <input v-model.number="questionLimit" type="number" min="1" :max="availableCount || 200" class="input-field w-full" />
+            <input v-model.number="questionLimit" type="number" min="1" :max="Math.min(availableCount || 300, 300)" class="input-field w-full" />
+            <p class="text-[10px] text-notion-muted dark:text-notion-muted-dark mt-1">最多 300 题</p>
           </div>
         </div>
         <label class="flex items-center gap-2 sm:gap-3 cursor-pointer">
@@ -521,8 +522,19 @@ function getBoolClass(val) {
             />
           </button>
           <span class="text-xs sm:text-sm text-notion-text dark:text-notion-text-dark">自动下一题</span>
-          <span class="text-xs text-notion-muted dark:text-notion-muted-dark hidden sm:inline">单选/判断题答完自动跳转</span>
+          <span class="text-xs text-notion-muted dark:text-notion-muted-dark hidden sm:inline">答对后自动跳转，答错需手动</span>
         </label>
+        <div v-if="autoAdvance" class="flex items-center gap-2 sm:gap-3 pl-12 sm:pl-12">
+          <span class="text-xs text-notion-muted dark:text-notion-muted-dark">跳转延迟</span>
+          <input
+            v-model.number="autoAdvanceDelay"
+            type="number"
+            min="1"
+            max="30"
+            class="input-field w-16 text-center text-xs py-1"
+          />
+          <span class="text-xs text-notion-muted dark:text-notion-muted-dark">秒</span>
+        </div>
         <label class="flex items-center gap-2 sm:gap-3 cursor-pointer">
           <button
             type="button"

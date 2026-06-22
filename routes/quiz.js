@@ -48,7 +48,7 @@ module.exports = function (getDb, { safeParse, sendError, localNow }, auth) {
     try {
       const db = getDb();
       const { category, type, mode = 'sequential', limit = 50 } = req.query;
-      const lim = Math.min(200, Math.max(1, parseInt(limit) || 50));
+      const lim = Math.min(300, Math.max(1, parseInt(limit) || 50));
 
       let where = 'WHERE deleted_at IS NULL';
       const params = {};
