@@ -7,8 +7,10 @@ module.exports = function (getDb, { sendError, localNow }, auth) {
   const DEFAULTS = {
     site_name: '题库管理',
     site_description: 'Question Bank',
-    announcement: '',
-    announcement_enabled: '0',
+    announcement_modal: '',
+    announcement_modal_enabled: '0',
+    announcement_banner: '',
+    announcement_banner_enabled: '0',
     footer_text: '',
     footer_hitokoto: '0',
     footer_hitokoto_types: 'a.b.c.d.e.f.g.h.i.j.k.l',
@@ -23,8 +25,11 @@ module.exports = function (getDb, { sendError, localNow }, auth) {
     return {
       site_name: settings.site_name || DEFAULTS.site_name,
       site_description: settings.site_description || DEFAULTS.site_description,
-      announcement: settings.announcement || DEFAULTS.announcement,
-      announcement_enabled: settings.announcement_enabled === '1',
+      announcement_modal: settings.announcement_modal || DEFAULTS.announcement_modal,
+      announcement_modal_enabled: settings.announcement_modal_enabled === '1',
+      announcement_modal_updated_at: settings.announcement_modal_updated_at || '',
+      announcement_banner: settings.announcement_banner || DEFAULTS.announcement_banner,
+      announcement_banner_enabled: settings.announcement_banner_enabled === '1',
       footer_text: settings.footer_text || DEFAULTS.footer_text,
       footer_hitokoto: settings.footer_hitokoto === '1',
       footer_hitokoto_types: settings.footer_hitokoto_types || DEFAULTS.footer_hitokoto_types,
@@ -32,16 +37,24 @@ module.exports = function (getDb, { sendError, localNow }, auth) {
     };
   }
 
+  // 获取设置（内部辅助函数）
+  function getSettingsObj() {
+    const db = getDb();
+    const rows = db.prepare('SELECT key, value, updated_at FROM site_settings').all();
+    const settings = {};
+    for (const row of rows) {
+      settings[row.key] = row.value;
+      if (row.key === 'announcement_modal' && row.updated_at) {
+        settings.announcement_modal_updated_at = row.updated_at;
+      }
+    }
+    return settings;
+  }
+
   // GET /api/site-settings — 公开接口，返回公告和页脚设置
   router.get('/', (req, res) => {
     try {
-      const db = getDb();
-      const rows = db.prepare('SELECT key, value FROM site_settings').all();
-      const settings = {};
-      for (const row of rows) {
-        settings[row.key] = row.value;
-      }
-      res.json(buildSettingsResponse(settings));
+      res.json(buildSettingsResponse(getSettingsObj()));
     } catch (err) {
       sendError(res, err, 'GET /api/site-settings');
     }
@@ -50,13 +63,7 @@ module.exports = function (getDb, { sendError, localNow }, auth) {
   // GET /api/site-settings/all — 管理员获取全部设置
   router.get('/all', auth.adminRequired, (req, res) => {
     try {
-      const db = getDb();
-      const rows = db.prepare('SELECT key, value FROM site_settings').all();
-      const settings = {};
-      for (const row of rows) {
-        settings[row.key] = row.value;
-      }
-      res.json(buildSettingsResponse(settings));
+      res.json(buildSettingsResponse(getSettingsObj()));
     } catch (err) {
       sendError(res, err, 'GET /api/site-settings/all');
     }
@@ -113,7 +120,7 @@ module.exports = function (getDb, { sendError, localNow }, auth) {
     try {
       const db = getDb();
       const now = localNow();
-      const allowedKeys = ['site_name', 'site_description', 'announcement', 'announcement_enabled', 'footer_text', 'footer_hitokoto', 'footer_hitokoto_types', 'footer_hitokoto_cache_minutes'];
+      const allowedKeys = ['site_name', 'site_description', 'announcement_modal', 'announcement_modal_enabled', 'announcement_banner', 'announcement_banner_enabled', 'footer_text', 'footer_hitokoto', 'footer_hitokoto_types', 'footer_hitokoto_cache_minutes'];
 
       // 保存后清除一言缓存，使新配置立即生效
       if (req.body.footer_hitokoto_types !== undefined || req.body.footer_hitokoto_cache_minutes !== undefined) {

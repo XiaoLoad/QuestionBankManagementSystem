@@ -13,8 +13,10 @@ const saving = ref(false)
 
 const siteName = ref('')
 const siteDescription = ref('')
-const announcement = ref('')
-const announcementEnabled = ref(false)
+const announcementModal = ref('')
+const announcementModalEnabled = ref(false)
+const announcementBanner = ref('')
+const announcementBannerEnabled = ref(false)
 const footerText = ref('')
 const footerHitokoto = ref(false)
 const footerHitokotoTypes = ref('a.b.c.d.e.f.g.h.i.j.k.l')
@@ -56,8 +58,10 @@ onMounted(async () => {
     const data = await api.getSiteSettingsAll()
     siteName.value = data.site_name || ''
     siteDescription.value = data.site_description || ''
-    announcement.value = data.announcement || ''
-    announcementEnabled.value = data.announcement_enabled || false
+    announcementModal.value = data.announcement_modal || ''
+    announcementModalEnabled.value = data.announcement_modal_enabled || false
+    announcementBanner.value = data.announcement_banner || ''
+    announcementBannerEnabled.value = data.announcement_banner_enabled || false
     footerText.value = data.footer_text || ''
     footerHitokoto.value = data.footer_hitokoto || false
     footerHitokotoTypes.value = data.footer_hitokoto_types || 'a.b.c.d.e.f.g.h.i.j.k.l'
@@ -75,8 +79,10 @@ async function handleSave() {
     await api.updateSiteSettings({
       site_name: siteName.value,
       site_description: siteDescription.value,
-      announcement: announcement.value,
-      announcement_enabled: announcementEnabled.value ? '1' : '0',
+      announcement_modal: announcementModal.value,
+      announcement_modal_enabled: announcementModalEnabled.value ? '1' : '0',
+      announcement_banner: announcementBanner.value,
+      announcement_banner_enabled: announcementBannerEnabled.value ? '1' : '0',
       footer_text: footerText.value,
       footer_hitokoto: footerHitokoto.value ? '1' : '0',
       footer_hitokoto_types: footerHitokotoTypes.value,
@@ -124,32 +130,62 @@ async function handleSave() {
           </div>
         </div>
 
-        <!-- 公告管理 -->
+        <!-- 弹窗公告 -->
         <div class="card">
           <h3 class="flex items-center gap-2 text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-notion-muted dark:text-notion-muted-dark mb-4">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/></svg>
-            公告管理
+            弹窗公告
           </h3>
           <div class="space-y-4 pl-0 sm:pl-5">
             <div class="flex items-start sm:items-center justify-between gap-3">
               <div class="flex-1 min-w-0">
-                <p class="text-xs sm:text-sm font-medium text-notion-text dark:text-notion-text-dark">启用公告</p>
-                <p class="text-xs text-notion-muted dark:text-notion-muted-dark mt-0.5">开启后公告将显示在仪表盘顶部</p>
+                <p class="text-xs sm:text-sm font-medium text-notion-text dark:text-notion-text-dark">启用弹窗公告</p>
+                <p class="text-xs text-notion-muted dark:text-notion-muted-dark mt-0.5">用户登录或打开页面时弹出，内容更新后自动重新弹窗</p>
               </div>
               <button
                 type="button"
-                @click="announcementEnabled = !announcementEnabled"
+                @click="announcementModalEnabled = !announcementModalEnabled"
                 :class="[
                   'relative w-10 h-5 rounded-full transition-colors flex-shrink-0 mt-0.5 sm:mt-0',
-                  announcementEnabled ? 'bg-notion-accent dark:bg-notion-accent-dark' : 'bg-gray-200 dark:bg-gray-700'
+                  announcementModalEnabled ? 'bg-notion-accent dark:bg-notion-accent-dark' : 'bg-gray-200 dark:bg-gray-700'
                 ]"
               >
-                <span :class="['absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform', announcementEnabled ? 'translate-x-5' : 'translate-x-0']" />
+                <span :class="['absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform', announcementModalEnabled ? 'translate-x-5' : 'translate-x-0']" />
               </button>
             </div>
             <div>
-              <label class="block text-xs sm:text-sm font-medium text-notion-text dark:text-notion-text-dark mb-1.5">公告内容</label>
-              <textarea v-model="announcement" rows="4" class="input-field resize-y w-full" placeholder="输入公告内容，支持多行..." />
+              <label class="block text-xs sm:text-sm font-medium text-notion-text dark:text-notion-text-dark mb-1.5">弹窗内容</label>
+              <textarea v-model="announcementModal" rows="6" class="input-field resize-y w-full" placeholder="输入弹窗公告内容，支持多行，适合更新日志..." />
+            </div>
+          </div>
+        </div>
+
+        <!-- 横幅公告 -->
+        <div class="card">
+          <h3 class="flex items-center gap-2 text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-notion-muted dark:text-notion-muted-dark mb-4">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            横幅公告
+          </h3>
+          <div class="space-y-4 pl-0 sm:pl-5">
+            <div class="flex items-start sm:items-center justify-between gap-3">
+              <div class="flex-1 min-w-0">
+                <p class="text-xs sm:text-sm font-medium text-notion-text dark:text-notion-text-dark">启用横幅公告</p>
+                <p class="text-xs text-notion-muted dark:text-notion-muted-dark mt-0.5">仪表盘顶部常驻显示，建议简短内容</p>
+              </div>
+              <button
+                type="button"
+                @click="announcementBannerEnabled = !announcementBannerEnabled"
+                :class="[
+                  'relative w-10 h-5 rounded-full transition-colors flex-shrink-0 mt-0.5 sm:mt-0',
+                  announcementBannerEnabled ? 'bg-notion-accent dark:bg-notion-accent-dark' : 'bg-gray-200 dark:bg-gray-700'
+                ]"
+              >
+                <span :class="['absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform', announcementBannerEnabled ? 'translate-x-5' : 'translate-x-0']" />
+              </button>
+            </div>
+            <div>
+              <label class="block text-xs sm:text-sm font-medium text-notion-text dark:text-notion-text-dark mb-1.5">横幅内容</label>
+              <textarea v-model="announcementBanner" rows="2" class="input-field resize-y w-full" placeholder="简短提醒，如：系统维护中..." />
             </div>
           </div>
         </div>
