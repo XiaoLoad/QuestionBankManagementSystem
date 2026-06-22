@@ -34,6 +34,17 @@ onMounted(() => {
 
 const needsOptions = computed(() => ['单选题', '多选题'].includes(form.type))
 const needsAnswers = computed(() => form.type !== '')
+const answerHint = computed(() => {
+  if (form.type === '简答题') return '（输入完整答案）'
+  if (form.type === '填空题') return '（每行一个答案，对应每一空）'
+  if (form.type === '多选题') return '（每行一个答案）'
+  return ''
+})
+const answerPlaceholder = computed(() => {
+  if (form.type === '判断题') return '正确 或 错误'
+  if (form.type === '简答题') return '请输入完整答案...'
+  return '请输入答案...'
+})
 
 function addImageUrl() {
   const url = newImageUrl.value.trim()
@@ -65,7 +76,11 @@ function handleSubmit() {
   }
 
   if (needsAnswers.value && form.answers.trim()) {
-    data.answers = form.answers.split('\n').map(s => s.trim()).filter(Boolean)
+    if (form.type === '简答题') {
+      data.answers = [form.answers.trim()]
+    } else {
+      data.answers = form.answers.split('\n').map(s => s.trim()).filter(Boolean)
+    }
   } else {
     data.answers = null
   }
@@ -121,9 +136,9 @@ function handleSubmit() {
           <!-- Answers -->
           <div v-if="needsAnswers">
             <label class="block text-sm font-medium text-notion-text dark:text-notion-text-dark mb-1.5">
-              答案 <span class="text-xs text-notion-muted dark:text-notion-muted-dark font-normal">（每行一个答案）</span>
+              答案 <span v-if="answerHint" class="text-xs text-notion-muted dark:text-notion-muted-dark font-normal">{{ answerHint }}</span>
             </label>
-            <textarea v-model="form.answers" rows="2" class="input-field resize-y" :placeholder="form.type === '判断题' ? '正确 或 错误' : '请输入答案...'" />
+            <textarea v-model="form.answers" :rows="form.type === '简答题' ? 4 : 2" class="input-field resize-y" :placeholder="answerPlaceholder" />
           </div>
 
           <!-- Category -->
