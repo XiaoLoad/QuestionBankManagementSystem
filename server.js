@@ -183,6 +183,25 @@ function initDatabase(db) {
     )`);
   } catch {}
 
+  // Migrate old announcement keys to new format
+  try {
+    const oldAnnouncement = db.prepare('SELECT value, updated_at FROM site_settings WHERE key = ?').get('announcement');
+    const oldEnabled = db.prepare('SELECT value FROM site_settings WHERE key = ?').get('announcement_enabled');
+    if (oldAnnouncement) {
+      const now = localNow();
+      db.prepare('INSERT OR IGNORE INTO site_settings (key, value, updated_at) VALUES (?, ?, ?)')
+        .run('announcement_modal', oldAnnouncement.value, oldAnnouncement.updated_at || now);
+      db.prepare('DELETE FROM site_settings WHERE key = ?').run('announcement');
+      console.log('[db] 已迁移旧公告 key: announcement → announcement_modal');
+    }
+    if (oldEnabled) {
+      db.prepare('INSERT OR IGNORE INTO site_settings (key, value, updated_at) VALUES (?, ?, ?)')
+        .run('announcement_modal_enabled', oldEnabled.value, localNow());
+      db.prepare('DELETE FROM site_settings WHERE key = ?').run('announcement_enabled');
+      console.log('[db] 已迁移旧公告 key: announcement_enabled → announcement_modal_enabled');
+    }
+  } catch {}
+
   // Create default admin user if not exists
   try {
     const adminExists = db.prepare('SELECT id FROM users WHERE username = ?').get('admin');
