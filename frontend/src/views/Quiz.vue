@@ -28,6 +28,7 @@ const questionLimit = ref(quizStore.setupConfig.questionLimit)
 const autoAdvance = ref(quizStore.setupConfig.autoAdvance)
 const autoAdvanceDelay = ref(quizStore.setupConfig.autoAdvanceDelay ?? 2)
 const reviewMode = ref(quizStore.setupConfig.reviewMode || false)
+const shuffleOptions = ref(quizStore.setupConfig.shuffleOptions || false)
 
 // Quiz
 const navigatorRef = ref(null)
@@ -50,6 +51,24 @@ const progress = computed(() => questions.value.length > 0 ? ((currentIndex.valu
 const correctCount = computed(() => records.value.filter(r => r.correct).length)
 const accuracy = computed(() => records.value.length > 0 ? Math.round(correctCount.value / records.value.length * 100) : 0)
 const wrongList = computed(() => records.value.filter(r => !r.correct))
+
+// 选项乱序（缓存同一题的打乱结果，保证返回时顺序不变）
+const shuffledCache = new Map()
+function shuffleArray(arr) {
+  const copy = [...arr]
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]]
+  }
+  return copy
+}
+const displayOptions = computed(() => {
+  const q = currentQuestion.value
+  if (!q || !q.options || !['单选题', '多选题'].includes(q.type)) return q?.options || []
+  if (!shuffleOptions.value) return q.options
+  if (!shuffledCache.has(q.id)) shuffledCache.set(q.id, shuffleArray(q.options))
+  return shuffledCache.get(q.id)
+})
 
 // 计算可选题目总数
 const availableCount = computed(() => {
@@ -116,6 +135,7 @@ function restoreQuizState() {
   questionLimit.value = quizStore.setupConfig.questionLimit
   autoAdvance.value = quizStore.setupConfig.autoAdvance
   autoAdvanceDelay.value = quizStore.setupConfig.autoAdvanceDelay ?? 2
+  shuffleOptions.value = quizStore.setupConfig.shuffleOptions || false
 
   // 恢复当前题的显示状态
   const rec = records.value.find(r => r.id === currentQuestion.value?.id)
@@ -143,6 +163,7 @@ function saveProgress() {
     autoAdvance: autoAdvance.value,
     autoAdvanceDelay: autoAdvanceDelay.value,
     reviewMode: reviewMode.value,
+    shuffleOptions: shuffleOptions.value,
   }
   quizStore.saveProgress()
 }
@@ -191,6 +212,7 @@ async function startQuiz() {
     currentIndex.value = 0
     records.value = []
     resultReported.value = false
+    shuffledCache.clear()
     resetAnswer()
     state.value = 'quiz'
     saveProgress()
@@ -366,6 +388,7 @@ function restart() {
   questions.value = []
   records.value = []
   resultReported.value = false
+  shuffledCache.clear()
   quizStore.clearProgress()
 }
 
@@ -377,6 +400,7 @@ function retryWrong() {
   currentIndex.value = 0
   records.value = []
   resultReported.value = false
+  shuffledCache.clear()
   resetAnswer()
   state.value = 'quiz'
   saveProgress()
@@ -554,6 +578,25 @@ function getBoolClass(val) {
           <span class="text-xs sm:text-sm text-notion-text dark:text-notion-text-dark">复习模式</span>
           <span class="text-xs text-notion-muted dark:text-notion-muted-dark hidden sm:inline">直接显示答案，用于复习巩固</span>
         </label>
+        <label class="flex items-center gap-2 sm:gap-3 cursor-pointer">
+          <button
+            type="button"
+            @click="shuffleOptions = !shuffleOptions"
+            :class="[
+              'relative w-10 h-5 rounded-full transition-colors flex-shrink-0',
+              shuffleOptions ? 'bg-notion-accent dark:bg-notion-accent-dark' : 'bg-gray-200 dark:bg-gray-700'
+            ]"
+          >
+            <span
+              :class="[
+                'absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform',
+                shuffleOptions ? 'translate-x-5' : 'translate-x-0'
+              ]"
+            />
+          </button>
+          <span class="text-xs sm:text-sm text-notion-text dark:text-notion-text-dark">选项乱序</span>
+          <span class="text-xs text-notion-muted dark:text-notion-muted-dark hidden sm:inline">打乱单选/多选题的选项顺序</span>
+        </label>
         <button @click="startQuiz" :disabled="loading || availableCount === 0" class="btn-primary w-full justify-center py-3">
           {{ loading ? '加载中...' : availableCount === 0 ? '该分类下没有题目' : '开始刷题' }}
         </button>
@@ -599,10 +642,10 @@ function getBoolClass(val) {
           </div>
 
           <!-- Options: 单选 / 多选 -->
-          <div v-if="['单选题', '多选题'].includes(currentQuestion.type) && currentQuestion.options" class="space-y-1.5 sm:space-y-2 mb-3 sm:mb-4">
+          <div v-if="['单选题', '多选题'].includes(currentQuestion.type) && displayOptions.length" class="space-y-1.5 sm:space-y-2 mb-3 sm:mb-4">
             <button
-              v-for="(opt, i) in currentQuestion.options"
-              :key="i"
+              v-for="(opt, i) in displayOptions"
+              :key="opt"
               @click="!reviewMode && selectOption(opt)"
               :class="['w-full text-left px-3 sm:px-4 py-3 sm:py-3 rounded-btn border-2 transition-all text-sm min-h-[44px]', reviewMode ? getOptionClass(opt) + ' cursor-default' : getOptionClass(opt)]"
             >
