@@ -9,11 +9,13 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ========== Constants ==========
-const CONFIG_PATH = path.join(__dirname, 'db-config.json');
-const DEFAULT_DB_PATH = path.join(__dirname, 'default.db');
-const UPLOADS_DIR = path.join(__dirname, 'databases');
-const TMP_DIR = path.join(__dirname, 'tmp-uploads');
-if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR);
+const DATA_DIR = process.env.DATA_DIR || __dirname;
+const CONFIG_PATH = path.join(DATA_DIR, 'db-config.json');
+const DEFAULT_DB_PATH = path.join(DATA_DIR, 'default.db');
+const UPLOADS_DIR = path.join(DATA_DIR, 'databases');
+const TMP_DIR = path.join(DATA_DIR, 'tmp-uploads');
+if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+if (!fs.existsSync(TMP_DIR)) fs.mkdirSync(TMP_DIR, { recursive: true });
 
 // ========== Config ==========
 function loadConfig() {
