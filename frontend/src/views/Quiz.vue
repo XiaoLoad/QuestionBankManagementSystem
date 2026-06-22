@@ -17,6 +17,7 @@ const toast = useToastStore()
 // State: 'setup' | 'quiz' | 'result'
 const state = ref(quizStore.state)
 const loading = ref(false)
+const resultReported = ref(quizStore.resultReported || false)
 
 // Setup
 const categories = ref([])
@@ -101,6 +102,8 @@ onMounted(async () => {
   // 如果有保存的进度，恢复到对应状态
   if (quizStore.hasProgress) {
     restoreQuizState()
+    // 恢复到结果页时，补报刷题结果（页面刷新场景）
+    if (state.value === 'result') reportResult()
   }
 })
 
@@ -109,6 +112,7 @@ function restoreQuizState() {
   questions.value = quizStore.questions
   currentIndex.value = quizStore.currentIndex
   records.value = quizStore.records
+  resultReported.value = quizStore.resultReported || false
   selectedCategories.value = quizStore.setupConfig.selectedCategories || []
   selectedTypes.value = [...quizStore.setupConfig.selectedTypes]
   selectedMode.value = quizStore.setupConfig.selectedMode
@@ -132,6 +136,7 @@ function saveProgress() {
   quizStore.questions = questions.value
   quizStore.currentIndex = currentIndex.value
   quizStore.records = records.value
+  quizStore.resultReported = resultReported.value
   quizStore.setupConfig = {
     selectedCategories: [...selectedCategories.value],
     selectedTypes: [...selectedTypes.value],
@@ -142,6 +147,26 @@ function saveProgress() {
   }
   quizStore.saveProgress()
 }
+
+// 上报刷题结果（带去重）
+function reportResult() {
+  if (resultReported.value || records.value.length === 0) return
+  resultReported.value = true
+  quizStore.resultReported = true
+  quizStore.saveProgress()
+  api.reportQuizResult({
+    total: questions.value.length,
+    correct: correctCount.value,
+    accuracy: accuracy.value,
+    wrongCount: wrongList.value.length,
+    category: selectedCategories.value.length > 0 ? selectedCategories.value.join(',') : '全部',
+  }).catch(() => {})
+}
+
+// 监听进入结果页，自动上报
+watch(state, (val) => {
+  if (val === 'result') reportResult()
+})
 
 // 监听关键状态变化，自动保存进度
 watch([state, currentIndex, records], () => {
@@ -166,6 +191,7 @@ async function startQuiz() {
     questions.value = res.items
     currentIndex.value = 0
     records.value = []
+    resultReported.value = false
     resetAnswer()
     state.value = 'quiz'
     saveProgress()
@@ -332,20 +358,14 @@ function endQuiz() {
   }
   state.value = 'result'
   saveProgress()
-  // 上报刷题结果
-  api.reportQuizResult({
-    total: questions.value.length,
-    correct: correctCount.value,
-    accuracy: accuracy.value,
-    wrongCount: wrongList.value.length,
-    category: selectedCategories.value.length > 0 ? selectedCategories.value.join(',') : '全部',
-  }).catch(() => {})
+  // 上报刷题结果（watcher 会自动处理）
 }
 
 function restart() {
   state.value = 'setup'
   questions.value = []
   records.value = []
+  resultReported.value = false
   quizStore.clearProgress()
 }
 
@@ -356,6 +376,7 @@ function retryWrong() {
   questions.value = questions.value.filter(q => wrongIds.includes(q.id))
   currentIndex.value = 0
   records.value = []
+  resultReported.value = false
   resetAnswer()
   state.value = 'quiz'
   saveProgress()

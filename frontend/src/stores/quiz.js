@@ -9,6 +9,7 @@ export const useQuizStore = defineStore('quiz', () => {
   const questions = ref(saved?.questions || [])
   const currentIndex = ref(saved?.currentIndex || 0)
   const records = ref(saved?.records || [])
+  const resultReported = ref(saved?.resultReported || false)
   const setupConfig = ref(saved?.setupConfig || {
     selectedCategory: '',
     selectedTypes: [],
@@ -28,6 +29,7 @@ export const useQuizStore = defineStore('quiz', () => {
       questions: questions.value,
       currentIndex: currentIndex.value,
       records: records.value,
+      resultReported: resultReported.value,
       setupConfig: setupConfig.value,
     }))
   }
@@ -39,6 +41,7 @@ export const useQuizStore = defineStore('quiz', () => {
     questions.value = []
     currentIndex.value = 0
     records.value = []
+    resultReported.value = false
   }
 
   // 恢复到刷题状态
@@ -49,6 +52,7 @@ export const useQuizStore = defineStore('quiz', () => {
       questions.value = saved.questions
       currentIndex.value = saved.currentIndex || 0
       records.value = saved.records || []
+      resultReported.value = saved.resultReported || false
       setupConfig.value = saved.setupConfig || setupConfig.value
       return true
     }
@@ -60,6 +64,7 @@ export const useQuizStore = defineStore('quiz', () => {
     questions,
     currentIndex,
     records,
+    resultReported,
     setupConfig,
     hasProgress,
     saveProgress,
