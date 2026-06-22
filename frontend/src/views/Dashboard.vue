@@ -5,6 +5,7 @@ import { useApi } from '@/composables/useApi'
 import { useToastStore } from '@/stores/toast'
 import { useThemeStore } from '@/stores/theme'
 import { TYPE_COLORS, TYPE_ICONS, TYPE_CARD_COLORS } from '@/composables/constants'
+import Skeleton from '@/components/Skeleton.vue'
 // FIX #5: Tree-shake Chart.js — import only what we need (line chart)
 import {
   Chart,
@@ -179,10 +180,21 @@ const totalIconColor = 'bg-notion-accent/10 dark:bg-notion-accent-dark/15 text-n
       </button>
     </div>
 
-    <!-- Loading -->
-    <div v-if="loading" class="flex items-center justify-center py-20">
-      <div class="w-8 h-8 border-2 border-notion-accent/30 border-t-notion-accent rounded-full animate-spin" />
-    </div>
+    <!-- Loading Skeleton -->
+    <template v-if="loading">
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-4 mb-8">
+        <div v-for="i in 5" :key="i" class="card">
+          <Skeleton width="36px" height="36px" rounded="8px" class="mb-3" />
+          <Skeleton width="60%" height="10px" class="mb-2" />
+          <Skeleton width="40%" height="28px" class="mb-1" />
+          <Skeleton width="50%" height="10px" />
+        </div>
+      </div>
+      <div class="card">
+        <Skeleton width="30%" height="14px" class="mb-4" />
+        <Skeleton width="100%" height="200px" />
+      </div>
+    </template>
 
     <template v-else-if="stats">
       <!-- Stats Cards -->

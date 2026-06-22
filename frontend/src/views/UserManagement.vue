@@ -17,9 +17,8 @@
     <!-- Users List -->
     <div class="card p-0 overflow-hidden">
       <!-- Loading State -->
-      <div v-if="loading" class="text-center py-12">
-        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-accent dark:border-accent-dark mx-auto"></div>
-        <p class="text-notion-muted dark:text-notion-muted-dark mt-4">加载中...</p>
+      <div v-if="loading" class="flex items-center justify-center py-20">
+        <div class="w-8 h-8 border-2 border-notion-accent/30 border-t-notion-accent rounded-full animate-spin" />
       </div>
 
       <!-- Empty State -->

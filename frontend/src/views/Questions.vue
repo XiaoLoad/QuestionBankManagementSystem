@@ -14,6 +14,7 @@ import { useDebounceSearch } from '@/composables/useDebounceSearch'
 import QuestionFormModal from '@/components/QuestionFormModal.vue'
 import PaginationBar from '@/components/PaginationBar.vue'
 import SearchInput from '@/components/SearchInput.vue'
+import Skeleton from '@/components/Skeleton.vue'
 import SearchableSelect from '@/components/SearchableSelect.vue'
 import { useQuestionsPageStore } from '@/stores/questionsPage'
 
@@ -369,9 +370,16 @@ const hasActiveFilters = computed(() => {
 
     <!-- Table / Card list (scrollable, fills remaining space) -->
     <div class="flex-1 min-h-0 card p-0 overflow-hidden flex flex-col">
-      <!-- Loading -->
-      <div v-if="loading" class="flex-1 flex items-center justify-center">
-        <div class="w-8 h-8 border-2 border-notion-accent/30 border-t-notion-accent rounded-full animate-spin" />
+      <!-- Loading Skeleton -->
+      <div v-if="loading" class="p-4 space-y-3">
+        <div v-for="i in 6" :key="i" class="flex items-center gap-4 py-3 border-b border-notion-border dark:border-notion-border-dark last:border-0">
+          <Skeleton width="16px" height="16px" rounded="4px" />
+          <Skeleton width="40px" height="14px" />
+          <Skeleton width="56px" height="20px" rounded="6px" />
+          <div class="flex-1"><Skeleton height="14px" /></div>
+          <Skeleton width="80px" height="14px" />
+          <Skeleton width="60px" height="14px" />
+        </div>
       </div>
 
       <!-- Empty -->

@@ -844,7 +844,7 @@ async function batchDeleteByDate() {
       </div>
 
       <!-- Batch Delete -->
-      <div class="card lg:col-span-2">
+      <div class="card lg:col-span-2 mt-6">
         <div class="flex items-center gap-3 mb-4">
           <div class="w-10 h-10 rounded-btn bg-red-50 dark:bg-red-900/30 flex items-center justify-center">
             <svg class="w-5 h-5 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -895,7 +895,7 @@ async function batchDeleteByDate() {
     </div>
 
     <!-- Dedup Tool -->
-    <div class="card lg:col-span-2">
+    <div class="card lg:col-span-2 mt-6">
       <div class="flex items-center gap-3 mb-4">
         <div class="w-10 h-10 rounded-btn bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center">
           <svg class="w-5 h-5 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>

@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useApi } from '@/composables/useApi'
+import Skeleton from '@/components/Skeleton.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useToastStore } from '@/stores/toast'
 import { usePagination } from '@/composables/usePagination'
@@ -283,9 +284,16 @@ async function doDelete() {
 
     <!-- List card (fills remaining space) -->
     <div class="flex-1 min-h-0 card p-0 overflow-hidden flex flex-col">
-      <!-- Loading -->
-      <div v-if="loading" class="flex-1 flex items-center justify-center">
-        <div class="w-8 h-8 border-2 border-notion-accent/30 border-t-notion-accent rounded-full animate-spin" />
+      <!-- Loading Skeleton -->
+      <div v-if="loading" class="p-4 space-y-3">
+        <div v-for="i in 5" :key="i" class="flex items-center gap-4 p-4 border-b border-notion-border dark:border-notion-border-dark last:border-0">
+          <Skeleton width="40px" height="40px" rounded="8px" />
+          <div class="flex-1 space-y-2">
+            <Skeleton width="40%" height="14px" />
+            <Skeleton width="60%" height="10px" />
+          </div>
+          <Skeleton width="50px" height="20px" rounded="6px" />
+        </div>
       </div>
 
       <!-- Empty -->

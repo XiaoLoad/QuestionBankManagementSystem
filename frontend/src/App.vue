@@ -14,7 +14,13 @@ onMounted(() => {
 
 <template>
   <AppLayout>
-    <router-view />
+    <router-view v-slot="{ Component }">
+      <Transition name="page" mode="out-in">
+        <KeepAlive :include="['Questions', 'Categories', 'Quiz']">
+          <component :is="Component" />
+        </KeepAlive>
+      </Transition>
+    </router-view>
   </AppLayout>
   <ToastContainer />
   <ConfirmDialog />
