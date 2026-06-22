@@ -215,11 +215,21 @@ export function useApi() {
     deployDatabase: (sourcePath, fileName, overwrite) => request('/api/database/deploy', { method: 'POST', body: JSON.stringify({ sourcePath, fileName, overwrite }) }),
     uploadDatabase: async (file, desiredName) => {
       const toast = useToastStore()
+      const authStore = useAuthStore()
       const formData = new FormData()
       formData.append('file', file)
       const url = desiredName ? `/api/database/upload?desiredName=${encodeURIComponent(desiredName)}` : '/api/database/upload'
       try {
-        const res = await fetch(url, { method: 'POST', body: formData })
+        const res = await fetch(url, {
+          method: 'POST',
+          body: formData,
+          headers: { 'Authorization': `Bearer ${authStore.token}` },
+        })
+        if (res.status === 401) {
+          authStore.logout()
+          window.location.href = '/login'
+          throw { status: 401, data: { error: '登录已过期' } }
+        }
         const data = await res.json()
         if (!res.ok) {
           toast.error(data.error || '上传失败')
