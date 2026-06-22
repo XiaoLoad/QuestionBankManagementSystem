@@ -48,7 +48,7 @@ const routes = [
     path: '/quiz',
     name: 'Quiz',
     component: () => import('@/views/Quiz.vue'),
-    meta: { title: '刷题' }
+    meta: { title: '题库练习' }
   },
   {
     path: '/ai-settings',

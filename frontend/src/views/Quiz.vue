@@ -453,152 +453,176 @@ function getBoolClass(val) {
   <div class="h-full flex flex-col">
     <!-- Header -->
     <div class="flex-shrink-0 mb-4 sm:mb-6">
-      <h1 class="text-xl sm:text-2xl font-bold text-notion-text dark:text-notion-text-dark">刷题</h1>
+      <h1 class="text-xl sm:text-2xl font-bold text-notion-text dark:text-notion-text-dark">题库练习</h1>
       <p class="text-xs sm:text-sm text-notion-muted dark:text-notion-muted-dark mt-1">选择分类，开始练习</p>
     </div>
 
     <!-- Setup -->
-    <div v-if="state === 'setup'" class="card max-w-xl">
-      <h2 class="text-sm sm:text-base font-semibold text-notion-text dark:text-notion-text-dark mb-3 sm:mb-4">刷题设置</h2>
-      <div class="space-y-3 sm:space-y-4">
+    <div v-if="state === 'setup'" class="card">
+      <h2 class="text-base sm:text-lg font-semibold text-notion-text dark:text-notion-text-dark mb-5 sm:mb-6">练习设置</h2>
+
+      <div class="space-y-5 sm:space-y-6">
+        <!-- 出题范围 -->
         <div>
-          <label class="block text-xs sm:text-sm font-medium text-notion-text dark:text-notion-text-dark mb-1.5">
-            选择分类（可多选，不选则全部）
-          </label>
-          <!-- 已选分类标签 -->
-          <div v-if="selectedCategories.length > 0" class="flex flex-wrap gap-1.5 mb-2">
-            <span
-              v-for="cat in selectedCategories"
-              :key="cat"
-              class="inline-flex items-center gap-1 px-2 py-0.5 rounded-badge text-xs bg-notion-accent/10 dark:bg-notion-accent-dark/15 text-notion-accent dark:text-notion-accent-dark"
-            >
-              {{ cat }}
-              <button @click="selectedCategories.splice(selectedCategories.indexOf(cat), 1)" class="hover:text-red-500 transition-colors">
-                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
+          <h3 class="flex items-center gap-2 text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-notion-muted dark:text-notion-muted-dark mb-3 sm:mb-4">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+            出题范围
+          </h3>
+          <div class="space-y-3 sm:space-y-4 pl-0 sm:pl-5">
+            <div>
+              <label class="block text-xs sm:text-sm font-medium text-notion-text dark:text-notion-text-dark mb-1.5">
+                选择分类（可多选，不选则全部）
+              </label>
+              <div v-if="selectedCategories.length > 0" class="flex flex-wrap gap-1.5 mb-2">
+                <span
+                  v-for="cat in selectedCategories"
+                  :key="cat"
+                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded-badge text-xs bg-notion-accent/10 dark:bg-notion-accent-dark/15 text-notion-accent dark:text-notion-accent-dark"
+                >
+                  {{ cat }}
+                  <button @click="selectedCategories.splice(selectedCategories.indexOf(cat), 1)" class="hover:text-red-500 transition-colors">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                  </button>
+                </span>
+              </div>
+              <SearchableSelect
+                modelValue=""
+                @update:modelValue="addCategory"
+                :options="categories.filter(c => !selectedCategories.includes(c.name)).map(c => ({ label: c.name + '（' + c.question_count + '题）', value: c.name }))"
+                placeholder="搜索并添加分类..."
+              />
+            </div>
+            <div>
+              <label class="block text-xs sm:text-sm font-medium text-notion-text dark:text-notion-text-dark mb-1.5">
+                题型（可多选，不选则全部）
+                <span v-if="typeCountsLoading" class="text-notion-muted dark:text-notion-muted-dark ml-1">加载中...</span>
+                <span v-else-if="availableCount > 0" class="text-notion-accent dark:text-notion-accent-dark ml-1">共 {{ availableCount }} 题</span>
+              </label>
+              <div class="flex flex-wrap gap-1.5 sm:gap-2">
+                <button
+                  v-for="t in QUESTION_TYPES"
+                  :key="t"
+                  type="button"
+                  @click="selectedTypes.includes(t) ? selectedTypes.splice(selectedTypes.indexOf(t), 1) : selectedTypes.push(t)"
+                  :class="[
+                    'px-2.5 py-1.5 sm:px-3 rounded-btn text-xs font-medium border transition-colors inline-flex items-center gap-1',
+                    selectedTypes.includes(t)
+                      ? 'border-notion-accent dark:border-notion-accent-dark bg-notion-accent/10 dark:bg-notion-accent-dark/15 text-notion-accent dark:text-notion-accent-dark'
+                      : 'border-notion-border dark:border-notion-border-dark text-notion-muted dark:text-notion-muted-dark hover:border-gray-300 dark:hover:border-gray-600'
+                  ]"
+                >
+                  {{ t }}
+                  <span v-if="typeCounts.byType?.[t]" class="text-[10px] opacity-70">({{ typeCounts.byType[t] }})</span>
+                </button>
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-3 sm:gap-4">
+              <div>
+                <label class="block text-xs sm:text-sm font-medium text-notion-text dark:text-notion-text-dark mb-1.5">出题顺序</label>
+                <select v-model="selectedMode" class="select-field w-full">
+                  <option value="random">随机</option>
+                  <option value="sequential">顺序</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs sm:text-sm font-medium text-notion-text dark:text-notion-text-dark mb-1.5">
+                  题目数量
+                  <span v-if="availableCount > 0" class="text-notion-muted dark:text-notion-muted-dark">/ {{ availableCount }}</span>
+                </label>
+                <input v-model.number="questionLimit" type="number" min="1" :max="Math.min(availableCount || 300, 300)" class="input-field w-full" />
+                <p class="text-[10px] text-notion-muted dark:text-notion-muted-dark mt-1">最多 300 题</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 分隔线 -->
+        <div class="border-t border-notion-border dark:border-notion-border-dark"></div>
+
+        <!-- 答题设置 -->
+        <div>
+          <h3 class="flex items-center gap-2 text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-notion-muted dark:text-notion-muted-dark mb-3 sm:mb-4">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
+            答题设置
+          </h3>
+          <div class="space-y-2 sm:space-y-0 sm:divide-y sm:divide-notion-border dark:sm:divide-notion-border-dark">
+            <!-- 自动下一题 -->
+            <div class="flex items-start sm:items-center justify-between gap-3 py-0 sm:py-3">
+              <div class="flex-1 min-w-0">
+                <p class="text-xs sm:text-sm font-medium text-notion-text dark:text-notion-text-dark">自动下一题</p>
+                <p class="text-xs text-notion-muted dark:text-notion-muted-dark mt-0.5">答对后自动跳转，答错需手动</p>
+              </div>
+              <button
+                type="button"
+                @click="autoAdvance = !autoAdvance"
+                :class="[
+                  'relative w-10 h-5 rounded-full transition-colors flex-shrink-0 mt-0.5 sm:mt-0',
+                  autoAdvance ? 'bg-notion-accent dark:bg-notion-accent-dark' : 'bg-gray-200 dark:bg-gray-700'
+                ]"
+              >
+                <span :class="['absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform', autoAdvance ? 'translate-x-5' : 'translate-x-0']" />
               </button>
-            </span>
+            </div>
+            <!-- 跳转延迟 -->
+            <div v-if="autoAdvance" class="flex items-center gap-3 py-2 sm:py-3 pl-0 sm:pl-0">
+              <div class="flex-1 min-w-0">
+                <p class="text-xs sm:text-sm font-medium text-notion-text dark:text-notion-text-dark">跳转延迟</p>
+                <p class="text-xs text-notion-muted dark:text-notion-muted-dark mt-0.5">答对后等待时间</p>
+              </div>
+              <div class="flex items-center gap-1.5 flex-shrink-0">
+                <input
+                  v-model.number="autoAdvanceDelay"
+                  type="number"
+                  min="1"
+                  max="30"
+                  class="input-field w-14 text-center text-xs py-1"
+                />
+                <span class="text-xs text-notion-muted dark:text-notion-muted-dark">秒</span>
+              </div>
+            </div>
+            <!-- 选项乱序 -->
+            <div class="flex items-start sm:items-center justify-between gap-3 py-2 sm:py-3">
+              <div class="flex-1 min-w-0">
+                <p class="text-xs sm:text-sm font-medium text-notion-text dark:text-notion-text-dark">选项乱序</p>
+                <p class="text-xs text-notion-muted dark:text-notion-muted-dark mt-0.5">打乱单选/多选题的选项顺序</p>
+              </div>
+              <button
+                type="button"
+                @click="shuffleOptions = !shuffleOptions"
+                :class="[
+                  'relative w-10 h-5 rounded-full transition-colors flex-shrink-0 mt-0.5 sm:mt-0',
+                  shuffleOptions ? 'bg-notion-accent dark:bg-notion-accent-dark' : 'bg-gray-200 dark:bg-gray-700'
+                ]"
+              >
+                <span :class="['absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform', shuffleOptions ? 'translate-x-5' : 'translate-x-0']" />
+              </button>
+            </div>
+            <!-- 复习模式 -->
+            <div class="flex items-start sm:items-center justify-between gap-3 py-2 sm:py-3">
+              <div class="flex-1 min-w-0">
+                <p class="text-xs sm:text-sm font-medium text-notion-text dark:text-notion-text-dark">复习模式</p>
+                <p class="text-xs text-notion-muted dark:text-notion-muted-dark mt-0.5">直接显示答案，用于复习巩固</p>
+              </div>
+              <button
+                type="button"
+                @click="reviewMode = !reviewMode"
+                :class="[
+                  'relative w-10 h-5 rounded-full transition-colors flex-shrink-0 mt-0.5 sm:mt-0',
+                  reviewMode ? 'bg-notion-accent dark:bg-notion-accent-dark' : 'bg-gray-200 dark:bg-gray-700'
+                ]"
+              >
+                <span :class="['absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform', reviewMode ? 'translate-x-5' : 'translate-x-0']" />
+              </button>
+            </div>
           </div>
-          <!-- 搜索添加分类 -->
-          <SearchableSelect
-            modelValue=""
-            @update:modelValue="addCategory"
-            :options="categories.filter(c => !selectedCategories.includes(c.name)).map(c => ({ label: c.name + '（' + c.question_count + '题）', value: c.name }))"
-            placeholder="搜索并添加分类..."
-          />
         </div>
-        <div>
-          <label class="block text-xs sm:text-sm font-medium text-notion-text dark:text-notion-text-dark mb-1.5">
-            题型（可多选，不选则全部）
-            <span v-if="typeCountsLoading" class="text-notion-muted dark:text-notion-muted-dark ml-1">加载中...</span>
-            <span v-else-if="availableCount > 0" class="text-notion-accent dark:text-notion-accent-dark ml-1">共 {{ availableCount }} 题</span>
-          </label>
-          <div class="flex flex-wrap gap-1.5 sm:gap-2">
-            <button
-              v-for="t in QUESTION_TYPES"
-              :key="t"
-              type="button"
-              @click="selectedTypes.includes(t) ? selectedTypes.splice(selectedTypes.indexOf(t), 1) : selectedTypes.push(t)"
-              :class="[
-                'px-2.5 py-1.5 sm:px-3 rounded-btn text-xs font-medium border transition-colors inline-flex items-center gap-1',
-                selectedTypes.includes(t)
-                  ? 'border-notion-accent dark:border-notion-accent-dark bg-notion-accent/10 dark:bg-notion-accent-dark/15 text-notion-accent dark:text-notion-accent-dark'
-                  : 'border-notion-border dark:border-notion-border-dark text-notion-muted dark:text-notion-muted-dark hover:border-gray-300 dark:hover:border-gray-600'
-              ]"
-            >
-              {{ t }}
-              <span v-if="typeCounts.byType?.[t]" class="text-[10px] opacity-70">({{ typeCounts.byType[t] }})</span>
-            </button>
-          </div>
-        </div>
-        <div class="grid grid-cols-2 gap-3 sm:gap-4">
-          <div>
-            <label class="block text-xs sm:text-sm font-medium text-notion-text dark:text-notion-text-dark mb-1.5">出题顺序</label>
-            <select v-model="selectedMode" class="select-field w-full">
-              <option value="random">随机</option>
-              <option value="sequential">顺序</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-xs sm:text-sm font-medium text-notion-text dark:text-notion-text-dark mb-1.5">
-              题目数量
-              <span v-if="availableCount > 0" class="text-notion-muted dark:text-notion-muted-dark">/ {{ availableCount }}</span>
-            </label>
-            <input v-model.number="questionLimit" type="number" min="1" :max="Math.min(availableCount || 300, 300)" class="input-field w-full" />
-            <p class="text-[10px] text-notion-muted dark:text-notion-muted-dark mt-1">最多 300 题</p>
-          </div>
-        </div>
-        <label class="flex items-center gap-2 sm:gap-3 cursor-pointer">
-          <button
-            type="button"
-            @click="autoAdvance = !autoAdvance"
-            :class="[
-              'relative w-10 h-5 rounded-full transition-colors flex-shrink-0',
-              autoAdvance ? 'bg-notion-accent dark:bg-notion-accent-dark' : 'bg-gray-200 dark:bg-gray-700'
-            ]"
-          >
-            <span
-              :class="[
-                'absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform',
-                autoAdvance ? 'translate-x-5' : 'translate-x-0'
-              ]"
-            />
-          </button>
-          <span class="text-xs sm:text-sm text-notion-text dark:text-notion-text-dark">自动下一题</span>
-          <span class="text-xs text-notion-muted dark:text-notion-muted-dark hidden sm:inline">答对后自动跳转，答错需手动</span>
-        </label>
-        <div v-if="autoAdvance" class="flex items-center gap-2 sm:gap-3 pl-12 sm:pl-12">
-          <span class="text-xs text-notion-muted dark:text-notion-muted-dark">跳转延迟</span>
-          <input
-            v-model.number="autoAdvanceDelay"
-            type="number"
-            min="1"
-            max="30"
-            class="input-field w-16 text-center text-xs py-1"
-          />
-          <span class="text-xs text-notion-muted dark:text-notion-muted-dark">秒</span>
-        </div>
-        <label class="flex items-center gap-2 sm:gap-3 cursor-pointer">
-          <button
-            type="button"
-            @click="reviewMode = !reviewMode"
-            :class="[
-              'relative w-10 h-5 rounded-full transition-colors flex-shrink-0',
-              reviewMode ? 'bg-notion-accent dark:bg-notion-accent-dark' : 'bg-gray-200 dark:bg-gray-700'
-            ]"
-          >
-            <span
-              :class="[
-                'absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform',
-                reviewMode ? 'translate-x-5' : 'translate-x-0'
-              ]"
-            />
-          </button>
-          <span class="text-xs sm:text-sm text-notion-text dark:text-notion-text-dark">复习模式</span>
-          <span class="text-xs text-notion-muted dark:text-notion-muted-dark hidden sm:inline">直接显示答案，用于复习巩固</span>
-        </label>
-        <label class="flex items-center gap-2 sm:gap-3 cursor-pointer">
-          <button
-            type="button"
-            @click="shuffleOptions = !shuffleOptions"
-            :class="[
-              'relative w-10 h-5 rounded-full transition-colors flex-shrink-0',
-              shuffleOptions ? 'bg-notion-accent dark:bg-notion-accent-dark' : 'bg-gray-200 dark:bg-gray-700'
-            ]"
-          >
-            <span
-              :class="[
-                'absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform',
-                shuffleOptions ? 'translate-x-5' : 'translate-x-0'
-              ]"
-            />
-          </button>
-          <span class="text-xs sm:text-sm text-notion-text dark:text-notion-text-dark">选项乱序</span>
-          <span class="text-xs text-notion-muted dark:text-notion-muted-dark hidden sm:inline">打乱单选/多选题的选项顺序</span>
-        </label>
-        <button @click="startQuiz" :disabled="loading || availableCount === 0" class="btn-primary w-full justify-center py-3">
-          {{ loading ? '加载中...' : availableCount === 0 ? '该分类下没有题目' : '开始刷题' }}
+
+        <!-- 分隔线 -->
+        <div class="border-t border-notion-border dark:border-notion-border-dark"></div>
+
+        <!-- 开始按钮 -->
+        <button @click="startQuiz" :disabled="loading || availableCount === 0" class="btn-primary w-full justify-center py-3 text-sm sm:text-base">
+          {{ loading ? '加载中...' : availableCount === 0 ? '该分类下没有题目' : '开始练习' }}
         </button>
       </div>
     </div>
@@ -735,7 +759,7 @@ function getBoolClass(val) {
 
     <!-- Result -->
     <div v-if="state === 'result'" class="card max-w-2xl">
-      <h2 class="text-base sm:text-lg font-semibold text-notion-text dark:text-notion-text-dark mb-4 sm:mb-6">刷题结果</h2>
+      <h2 class="text-base sm:text-lg font-semibold text-notion-text dark:text-notion-text-dark mb-4 sm:mb-6">练习结果</h2>
 
       <div class="grid grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
         <div class="text-center p-3 sm:p-4 rounded-btn bg-notion-surface dark:bg-notion-surface-dark">
