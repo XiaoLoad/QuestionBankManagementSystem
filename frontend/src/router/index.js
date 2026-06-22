@@ -75,6 +75,12 @@ const routes = [
     meta: { title: '用户活动日志', requiresAdmin: true }
   },
   {
+    path: '/site-settings',
+    name: 'SiteSettings',
+    component: () => import('@/views/SiteSettings.vue'),
+    meta: { title: '网站设置', requiresAdmin: true }
+  },
+  {
     path: '/about',
     name: 'About',
     component: () => import('@/views/About.vue'),

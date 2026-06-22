@@ -34,6 +34,19 @@ let chartInstance = null
 const trendDays = ref(30)
 const trendOptions = [7, 30, 90]
 
+// 公告
+const announcement = ref('')
+const announcementEnabled = ref(false)
+const announcementDismissed = ref(false)
+
+async function loadAnnouncement() {
+  try {
+    const data = await api.getSiteSettings()
+    announcement.value = data.announcement || ''
+    announcementEnabled.value = data.announcement_enabled || false
+  } catch {}
+}
+
 async function loadStats(days) {
   loading.value = true
   try {
@@ -50,7 +63,10 @@ function setTrendDays(days) {
   loadStats(days)
 }
 
-onMounted(() => loadStats())
+onMounted(() => {
+  loadStats()
+  loadAnnouncement()
+})
 
 // Watch for chartRef to become available (handles v-if timing)
 watch(chartRef, (el) => {
@@ -142,6 +158,25 @@ const totalIconColor = 'bg-notion-accent/10 dark:bg-notion-accent-dark/15 text-n
     <div class="mb-8">
       <h1 class="text-2xl font-bold text-notion-text dark:text-notion-text-dark">仪表盘</h1>
       <p class="text-sm text-notion-muted dark:text-notion-muted-dark mt-1">题库数据概览</p>
+    </div>
+
+    <!-- 公告横幅 -->
+    <div
+      v-if="announcementEnabled && announcement && !announcementDismissed"
+      class="mb-5 sm:mb-6 p-3 sm:p-4 rounded-card bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 flex items-start gap-3"
+    >
+      <svg class="w-5 h-5 text-blue-500 dark:text-blue-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/>
+      </svg>
+      <div class="flex-1 min-w-0">
+        <p class="text-xs font-semibold text-blue-600 dark:text-blue-400 mb-1">公告</p>
+        <p class="text-sm text-blue-800 dark:text-blue-200 whitespace-pre-wrap leading-relaxed">{{ announcement }}</p>
+      </div>
+      <button @click="announcementDismissed = true" class="p-1 rounded hover:bg-blue-100 dark:hover:bg-blue-800/30 transition-colors flex-shrink-0">
+        <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
     </div>
 
     <!-- Loading -->

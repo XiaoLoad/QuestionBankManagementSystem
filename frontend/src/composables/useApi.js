@@ -74,6 +74,12 @@ export function useApi() {
     getStats: (days) => request(`/api/stats${days ? `?days=${days}` : ''}`),
     refresh: () => request('/api/refresh'),
 
+    // Site Settings
+    getSiteSettings: () => request('/api/site-settings'),
+    getSiteSettingsAll: () => request('/api/site-settings/all'),
+    updateSiteSettings: (body) => request('/api/site-settings', { method: 'PUT', body: JSON.stringify(body) }),
+    getHitokoto: () => request('/api/site-settings/hitokoto'),
+
     // Quiz
     getTypeCounts: (category) => request(`/api/quiz/type-counts${category ? `?category=${encodeURIComponent(category)}` : ''}`),
     getQuizQuestions: (params = {}) => {

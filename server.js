@@ -174,6 +174,15 @@ function initDatabase(db) {
   try { db.exec(`CREATE INDEX IF NOT EXISTS idx_activity_logs_user ON user_activity_logs(user_id)`); } catch {}
   try { db.exec(`CREATE INDEX IF NOT EXISTS idx_activity_logs_created ON user_activity_logs(created_at)`); } catch {}
 
+  // Ensure site_settings table exists
+  try {
+    db.exec(`CREATE TABLE IF NOT EXISTS site_settings (
+      key         TEXT PRIMARY KEY,
+      value       TEXT,
+      updated_at  DATETIME
+    )`);
+  } catch {}
+
   // Create default admin user if not exists
   try {
     const adminExists = db.prepare('SELECT id FROM users WHERE username = ?').get('admin');
@@ -295,6 +304,10 @@ app.use('/api/quiz', auth.authRequired, quizRouter);
 // External routes (no auth required - for yatori/OCS)
 const externalRouter = require('./routes/external')(getDb, helpers);
 app.use('/api/external', externalRouter);
+
+// Site settings routes (GET public, PUT admin only)
+const siteSettingsRouter = require('./routes/site-settings')(getDb, helpers, auth);
+app.use('/api/site-settings', siteSettingsRouter);
 
 // GET /api/refresh — merge stats + categories in one call
 app.get('/api/refresh', auth.authRequired, (req, res) => {

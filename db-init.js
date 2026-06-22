@@ -98,6 +98,12 @@ db.exec(`
     last_login_at DATETIME,
     is_active     INTEGER DEFAULT 1
   );
+
+  CREATE TABLE IF NOT EXISTS site_settings (
+    key         TEXT PRIMARY KEY,
+    value       TEXT,
+    updated_at  DATETIME
+  );
 `);
 
 // Insert default category
@@ -118,5 +124,6 @@ console.log('[db-init]   - ai_providers 表已就绪（AI 服务商配置）');
 console.log('[db-init]   - external_config 表已就绪（题库对接配置）');
 console.log('[db-init]   - external_logs 表已就绪（对接查询日志）');
 console.log('[db-init]   - users 表已就绪（用户管理）');
+console.log('[db-init]   - site_settings 表已就绪（网站设置）');
 console.log('[db-init]   - 默认管理员账号: admin / admin123');
 console.log('[db-init]   - 性能索引已创建');

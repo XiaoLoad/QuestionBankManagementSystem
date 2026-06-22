@@ -1,13 +1,43 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
+import { useApi } from '@/composables/useApi'
 import Sidebar from './Sidebar.vue'
 
 const route = useRoute()
 const sidebarOpen = ref(false)
+const api = useApi()
 
 // 登录页不显示侧边栏
 const showSidebar = computed(() => route.path !== '/login')
+
+// 页脚
+const footerText = ref('')
+const footerHitokoto = ref(false)
+const hitokoto = ref({ hitokoto: '', from: '', from_who: '' })
+let hitokotoTimer = null
+
+async function loadFooter() {
+  try {
+    const data = await api.getSiteSettings()
+    footerText.value = data.footer_text || ''
+    footerHitokoto.value = data.footer_hitokoto || false
+    if (footerHitokoto.value) {
+      await loadHitokoto()
+      // 每 30 秒刷新一次一言
+      hitokotoTimer = setInterval(loadHitokoto, 30000)
+    }
+  } catch {}
+}
+
+async function loadHitokoto() {
+  try {
+    const data = await api.getHitokoto()
+    if (data.hitokoto) hitokoto.value = data
+  } catch {}
+}
+
+onMounted(loadFooter)
 </script>
 
 <template>
@@ -34,9 +64,22 @@ const showSidebar = computed(() => route.path !== '/login')
         <span class="text-lg font-semibold">题库管理</span>
       </header>
 
-      <main :class="['flex-1 overflow-y-auto', showSidebar ? 'p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full' : '']">
-        <slot />
-      </main>
+      <div class="flex-1 flex flex-col overflow-hidden">
+        <main :class="['flex-1 overflow-y-auto', showSidebar ? 'p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full' : '']">
+          <slot />
+        </main>
+        <!-- 页脚 -->
+        <footer v-if="footerText || footerHitokoto" class="flex-shrink-0 px-4 py-3 border-t border-notion-border dark:border-notion-border-dark">
+          <p class="text-xs text-notion-muted dark:text-notion-muted-dark text-center">
+            <template v-if="footerHitokoto && hitokoto.hitokoto">
+              <span v-if="footerText">{{ footerText }} — </span>
+              <span class="italic">{{ hitokoto.hitokoto }}</span>
+              <span v-if="hitokoto.from" class="opacity-60"> ——{{ hitokoto.from }}</span>
+            </template>
+            <template v-else>{{ footerText }}</template>
+          </p>
+        </footer>
+      </div>
     </div>
   </div>
 </template>
