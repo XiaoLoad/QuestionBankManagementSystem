@@ -17,7 +17,7 @@ const colorMap = {
 </script>
 
 <template>
-  <div class="fixed top-4 right-4 z-[9999] space-y-2 max-w-sm w-full pointer-events-none">
+  <div class="fixed z-[9999] space-y-2 max-w-sm w-full pointer-events-none toast-container">
     <TransitionGroup name="toast">
       <div
         v-for="t in toast.toasts"
@@ -43,6 +43,26 @@ const colorMap = {
 <style scoped>
 .toast-enter-active { transition: all 0.3s ease-out; }
 .toast-leave-active { transition: all 0.3s ease-in; }
-.toast-enter-from { transform: translateX(100%); opacity: 0; }
-.toast-leave-to { transform: translateX(100%); opacity: 0; }
+.toast-enter-from { transform: translateY(-100%); opacity: 0; }
+.toast-leave-to { transform: translateY(-100%); opacity: 0; }
+
+/* Toast容器样式 - PC端 */
+.toast-container {
+  top: 1rem;
+  right: 1rem;
+  max-width: 24rem;
+}
+
+/* 移动端适配 - 顶部通栏 */
+@media screen and (max-width: 639px) {
+  .toast-container.toast-container {
+    top: 0;
+    right: 0;
+    left: 0;
+    max-width: 100%;
+    width: 100%;
+    padding: max(0.75rem, env(safe-area-inset-top, 0px)) 0.75rem 0.75rem;
+    background: transparent;
+  }
+}
 </style>
