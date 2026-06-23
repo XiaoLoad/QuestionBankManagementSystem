@@ -10,13 +10,16 @@ const toast = useToastStore()
 
 const loading = ref(true)
 const saving = ref(false)
+const resetting = ref(false)
 
 const siteName = ref('')
 const siteDescription = ref('')
 const announcementModal = ref('')
 const announcementModalEnabled = ref(false)
+const isChangelog = ref(false)
 const announcementBanner = ref('')
 const announcementBannerEnabled = ref(false)
+const appVersion = ref('v1.0.0')
 const footerText = ref('')
 const footerHitokoto = ref(false)
 const footerHitokotoTypes = ref('a.b.c.d.e.f.g.h.i.j.k.l')
@@ -62,6 +65,7 @@ onMounted(async () => {
     announcementModalEnabled.value = data.announcement_modal_enabled || false
     announcementBanner.value = data.announcement_banner || ''
     announcementBannerEnabled.value = data.announcement_banner_enabled || false
+    appVersion.value = data.app_version || 'v1.0.0'
     footerText.value = data.footer_text || ''
     footerHitokoto.value = data.footer_hitokoto || false
     footerHitokotoTypes.value = data.footer_hitokoto_types || 'a.b.c.d.e.f.g.h.i.j.k.l'
@@ -81,18 +85,35 @@ async function handleSave() {
       site_description: siteDescription.value,
       announcement_modal: announcementModal.value,
       announcement_modal_enabled: announcementModalEnabled.value ? '1' : '0',
+      is_changelog: isChangelog.value,
       announcement_banner: announcementBanner.value,
       announcement_banner_enabled: announcementBannerEnabled.value ? '1' : '0',
+      app_version: appVersion.value,
       footer_text: footerText.value,
       footer_hitokoto: footerHitokoto.value ? '1' : '0',
       footer_hitokoto_types: footerHitokotoTypes.value,
       footer_hitokoto_cache_minutes: String(footerHitokotoCacheMinutes.value),
     })
     toast.success('设置已保存')
+    // 保存后重置更新日志开关
+    isChangelog.value = false
   } catch (e) {
     // handled
   } finally {
     saving.value = false
+  }
+}
+
+async function handleResetChangelog() {
+  if (!confirm('确定要重置更新日志为初始内容吗？')) return
+  resetting.value = true
+  try {
+    await api.resetChangelog()
+    toast.success('更新日志已重置')
+  } catch (e) {
+    // handled
+  } finally {
+    resetting.value = false
   }
 }
 </script>
@@ -153,9 +174,42 @@ async function handleSave() {
                 <span :class="['absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform', announcementModalEnabled ? 'translate-x-5' : 'translate-x-0']" />
               </button>
             </div>
+
+            <!-- 版本号和更新日志标记 -->
+            <div class="flex flex-col sm:flex-row gap-3">
+              <div class="flex-1">
+                <label class="block text-xs sm:text-sm font-medium text-notion-text dark:text-notion-text-dark mb-1.5">版本号</label>
+                <input v-model="appVersion" type="text" class="input-field w-full" placeholder="v1.0.0" />
+              </div>
+              <div class="flex items-end">
+                <div class="flex items-start sm:items-center justify-between gap-3 p-3 rounded-btn bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 w-full sm:w-auto">
+                  <div class="flex-1 min-w-0">
+                    <p class="text-xs font-medium text-amber-700 dark:text-amber-300">标记为更新日志</p>
+                    <p class="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5">开启后将记录到更新日志</p>
+                  </div>
+                  <button
+                    type="button"
+                    @click="isChangelog = !isChangelog"
+                    :class="[
+                      'relative w-10 h-5 rounded-full transition-colors flex-shrink-0',
+                      isChangelog ? 'bg-amber-500 dark:bg-amber-600' : 'bg-gray-200 dark:bg-gray-700'
+                    ]"
+                  >
+                    <span :class="['absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform', isChangelog ? 'translate-x-5' : 'translate-x-0']" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
             <div>
               <label class="block text-xs sm:text-sm font-medium text-notion-text dark:text-notion-text-dark mb-1.5">弹窗内容</label>
-              <textarea v-model="announcementModal" rows="6" class="input-field resize-y w-full" placeholder="输入弹窗公告内容，支持多行，适合更新日志..." />
+              <textarea v-model="announcementModal" rows="6" class="input-field resize-y w-full" placeholder="输入弹窗公告内容，支持Markdown语法..." />
+              <p class="text-[10px] text-notion-muted dark:text-notion-muted-dark mt-1">支持Markdown语法，如：标题(#)、列表(-)、粗体(**)、链接等</p>
+            </div>
+            <div class="flex justify-end">
+              <button @click="handleResetChangelog" :disabled="resetting" class="btn-secondary text-xs">
+                {{ resetting ? '重置中...' : '重置更新日志' }}
+              </button>
             </div>
           </div>
         </div>

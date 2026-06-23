@@ -1,7 +1,34 @@
 <script setup>
+import { ref, onMounted, computed } from 'vue'
+import { marked } from 'marked'
 import avatarUrl from "@/assets/images/test.jpg";
+import { useApi } from '@/composables/useApi'
 
-defineOptions({ name: "About" });
+defineOptions({ name: "About" })
+
+const api = useApi()
+
+const appVersion = ref('v1.0.0')
+const changelog = ref('')
+const loading = ref(true)
+const showChangelog = ref(false)
+
+const renderedChangelog = computed(() => {
+  if (!changelog.value) return ''
+  return marked.parse(changelog.value)
+})
+
+onMounted(async () => {
+  try {
+    const data = await api.getSiteSettings()
+    appVersion.value = data.app_version || 'v1.0.0'
+    changelog.value = data.changelog || ''
+  } catch (e) {
+    // handled
+  } finally {
+    loading.value = false
+  }
+})
 
 const techStack = [
   {
@@ -120,6 +147,50 @@ const techStack = [
           </p>
         </div>
       </div>
+    </div>
+
+    <!-- 版本信息 -->
+    <div class="card mb-6">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-btn bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center">
+          <svg class="w-5 h-5 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
+          </svg>
+        </div>
+        <div>
+          <h2 class="text-base font-semibold text-notion-text dark:text-notion-text-dark">当前版本</h2>
+          <p class="text-lg font-bold text-emerald-600 dark:text-emerald-400">{{ appVersion }}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 更新日志 -->
+    <div class="card mb-6">
+      <button
+        @click="showChangelog = !showChangelog"
+        class="w-full flex items-center justify-between gap-3"
+      >
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-btn bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center">
+            <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+          </div>
+          <h2 class="text-base font-semibold text-notion-text dark:text-notion-text-dark">更新日志</h2>
+        </div>
+        <svg
+          :class="['w-5 h-5 text-notion-muted dark:text-notion-muted-dark transition-transform', showChangelog ? 'rotate-180' : '']"
+          fill="none" stroke="currentColor" viewBox="0 0 24 24"
+        >
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+        </svg>
+      </button>
+      <Transition name="collapse">
+        <div v-if="showChangelog" class="mt-4 max-h-[400px] overflow-y-auto pr-2">
+          <div v-if="changelog" class="markdown-body text-sm text-notion-text dark:text-notion-text-dark" v-html="renderedChangelog"></div>
+          <p v-else class="text-sm text-notion-muted dark:text-notion-muted-dark">暂无更新日志</p>
+        </div>
+      </Transition>
     </div>
 
     <!-- Project Introduction -->

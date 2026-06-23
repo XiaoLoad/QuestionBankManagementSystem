@@ -1,6 +1,7 @@
 <script setup>
-import { ref, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { marked } from 'marked'
 import { useApi } from '@/composables/useApi'
 import { useToastStore } from '@/stores/toast'
 import { useThemeStore } from '@/stores/theme'
@@ -39,6 +40,12 @@ const trendOptions = [7, 30, 90]
 const modalContent = ref('')
 const modalEnabled = ref(false)
 const showModal = ref(false)
+
+// Markdown 渲染
+const renderedModalContent = computed(() => {
+  if (!modalContent.value) return ''
+  return marked.parse(modalContent.value)
+})
 
 // 横幅公告
 const bannerContent = ref('')
@@ -228,7 +235,7 @@ const totalIconColor = 'bg-notion-accent/10 dark:bg-notion-accent-dark/15 text-n
             </div>
             <!-- Content -->
             <div class="flex-1 overflow-y-auto px-5 sm:px-6 py-4">
-              <p class="text-sm sm:text-base text-notion-text dark:text-notion-text-dark whitespace-pre-wrap leading-relaxed">{{ modalContent }}</p>
+              <div class="markdown-body text-sm sm:text-base text-notion-text dark:text-notion-text-dark" v-html="renderedModalContent"></div>
             </div>
             <!-- Footer -->
             <div class="flex-shrink-0 px-5 sm:px-6 py-3 border-t border-notion-border dark:border-notion-border-dark flex justify-end">
