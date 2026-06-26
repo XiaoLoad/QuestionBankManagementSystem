@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useApi } from '@/composables/useApi'
 import Sidebar from './Sidebar.vue'
+import AnnouncementBanner from './AnnouncementBanner.vue'
 
 const route = useRoute()
 const sidebarOpen = ref(false)
@@ -66,6 +67,7 @@ onMounted(loadFooter)
 
       <div class="flex-1 flex flex-col overflow-hidden">
         <main :class="['flex-1 overflow-y-auto', showSidebar ? 'p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full' : '']">
+          <AnnouncementBanner />
           <slot />
         </main>
         <!-- 页脚 -->
