@@ -88,15 +88,24 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_ext_logs_source ON external_logs(source);
 
   CREATE TABLE IF NOT EXISTS users (
-    id            INTEGER PRIMARY KEY AUTOINCREMENT,
-    username      TEXT NOT NULL UNIQUE,
-    password      TEXT NOT NULL,
-    role          TEXT NOT NULL DEFAULT 'user',
-    display_name  TEXT,
-    created_at    DATETIME,
-    updated_at    DATETIME,
-    last_login_at DATETIME,
-    is_active     INTEGER DEFAULT 1
+    id                INTEGER PRIMARY KEY AUTOINCREMENT,
+    username          TEXT NOT NULL UNIQUE,
+    password          TEXT NOT NULL,
+    role              TEXT NOT NULL DEFAULT 'user',
+    display_name      TEXT,
+    restriction_mode  TEXT DEFAULT 'allow',
+    created_at        DATETIME,
+    updated_at        DATETIME,
+    last_login_at     DATETIME,
+    is_active         INTEGER DEFAULT 1
+  );
+
+  CREATE TABLE IF NOT EXISTS user_category_restrictions (
+    user_id      INTEGER NOT NULL,
+    category     TEXT NOT NULL,
+    created_at   DATETIME,
+    PRIMARY KEY (user_id, category),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
   );
 
   CREATE TABLE IF NOT EXISTS site_settings (

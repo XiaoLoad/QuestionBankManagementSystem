@@ -17,18 +17,31 @@ module.exports = function (getDb, helpers, auth) {
 
   /**
    * GET /api/users
-   * 获取用户列表
+   * 获取用户列表（含分类限制）
    */
   router.get('/', (req, res) => {
     try {
       const db = getDb();
       const users = db.prepare(`
-        SELECT id, username, role, display_name, created_at, updated_at, last_login_at, is_active
+        SELECT id, username, role, display_name, restriction_mode, created_at, updated_at, last_login_at, is_active
         FROM users
         ORDER BY created_at DESC
       `).all();
 
-      res.json(users);
+      // 附带每个用户的分类限制
+      const restrictions = db.prepare('SELECT user_id, category FROM user_category_restrictions').all();
+      const restrictionMap = {};
+      for (const r of restrictions) {
+        if (!restrictionMap[r.user_id]) restrictionMap[r.user_id] = [];
+        restrictionMap[r.user_id].push(r.category);
+      }
+
+      const result = users.map(u => ({
+        ...u,
+        restrictedCategories: restrictionMap[u.id] || [],
+      }));
+
+      res.json(result);
     } catch (err) {
       res.status(500).json({ error: '获取用户列表失败: ' + err.message });
     }
@@ -40,7 +53,7 @@ module.exports = function (getDb, helpers, auth) {
    */
   router.post('/', (req, res) => {
     try {
-      const { username, password, displayName, role } = req.body;
+      const { username, password, displayName, role, restrictedCategories, restrictionMode } = req.body;
 
       if (!username || !password) {
         return res.status(400).json({ error: '用户名和密码不能为空' });
@@ -56,6 +69,8 @@ module.exports = function (getDb, helpers, auth) {
 
       const validRoles = ['admin', 'user'];
       const userRole = validRoles.includes(role) ? role : 'user';
+      const validModes = ['allow', 'block'];
+      const userRestrictionMode = validModes.includes(restrictionMode) ? restrictionMode : 'allow';
 
       const db = getDb();
 
@@ -68,13 +83,29 @@ module.exports = function (getDb, helpers, auth) {
       const hash = bcrypt.hashSync(password, 10);
       const now = localNow();
 
-      const result = db.prepare(`
-        INSERT INTO users (username, password, role, display_name, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `).run(username, hash, userRole, displayName || username, now, now);
+      const createUser = db.transaction(() => {
+        const result = db.prepare(`
+          INSERT INTO users (username, password, role, display_name, restriction_mode, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+        `).run(username, hash, userRole, displayName || username, userRestrictionMode, now, now);
+
+        const userId = result.lastInsertRowid;
+
+        // 写入分类限制
+        if (Array.isArray(restrictedCategories) && restrictedCategories.length > 0) {
+          const insertRestriction = db.prepare('INSERT OR IGNORE INTO user_category_restrictions (user_id, category, created_at) VALUES (?, ?, ?)');
+          for (const cat of restrictedCategories) {
+            insertRestriction.run(userId, cat, now);
+          }
+        }
+
+        return userId;
+      });
+
+      const userId = createUser();
 
       res.json({
-        id: result.lastInsertRowid,
+        id: userId,
         username,
         role: userRole,
         displayName: displayName || username,
@@ -92,7 +123,7 @@ module.exports = function (getDb, helpers, auth) {
   router.put('/:id', (req, res) => {
     try {
       const { id } = req.params;
-      const { displayName, role, isActive } = req.body;
+      const { displayName, role, isActive, restrictedCategories, restrictionMode } = req.body;
 
       const db = getDb();
       const user = db.prepare('SELECT * FROM users WHERE id = ?').get(id);
@@ -130,15 +161,37 @@ module.exports = function (getDb, helpers, auth) {
         params.push(isActive ? 1 : 0);
       }
 
-      if (updates.length === 0) {
-        return res.status(400).json({ error: '没有需要更新的字段' });
+      if (restrictionMode !== undefined) {
+        const validModes = ['allow', 'block'];
+        if (validModes.includes(restrictionMode)) {
+          updates.push('restriction_mode = ?');
+          params.push(restrictionMode);
+        }
       }
 
-      updates.push('updated_at = ?');
-      params.push(localNow());
-      params.push(id);
+      const updateUser = db.transaction(() => {
+        // 更新用户基本信息
+        if (updates.length > 0) {
+          updates.push('updated_at = ?');
+          params.push(localNow());
+          params.push(id);
+          db.prepare(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`).run(...params);
+        }
 
-      db.prepare(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`).run(...params);
+        // 更新分类限制（传入数组时才更新，不传则不变）
+        if (Array.isArray(restrictedCategories)) {
+          db.prepare('DELETE FROM user_category_restrictions WHERE user_id = ?').run(id);
+          if (restrictedCategories.length > 0) {
+            const now = localNow();
+            const insertRestriction = db.prepare('INSERT OR IGNORE INTO user_category_restrictions (user_id, category, created_at) VALUES (?, ?, ?)');
+            for (const cat of restrictedCategories) {
+              insertRestriction.run(id, cat, now);
+            }
+          }
+        }
+      });
+
+      updateUser();
 
       res.json({ message: '用户信息更新成功' });
     } catch (err) {

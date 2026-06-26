@@ -176,6 +176,20 @@ function initDatabase(db) {
   try { db.exec(`CREATE INDEX IF NOT EXISTS idx_activity_logs_user ON user_activity_logs(user_id)`); } catch {}
   try { db.exec(`CREATE INDEX IF NOT EXISTS idx_activity_logs_created ON user_activity_logs(created_at)`); } catch {}
 
+  // Ensure user_category_restrictions table exists
+  try {
+    db.exec(`CREATE TABLE IF NOT EXISTS user_category_restrictions (
+      user_id      INTEGER NOT NULL,
+      category     TEXT NOT NULL,
+      created_at   DATETIME,
+      PRIMARY KEY (user_id, category),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )`);
+  } catch {}
+
+  // Add restriction_mode column to users if not exists
+  try { db.exec(`ALTER TABLE users ADD COLUMN restriction_mode TEXT DEFAULT 'allow'`); } catch {}
+
   // Ensure site_settings table exists
   try {
     db.exec(`CREATE TABLE IF NOT EXISTS site_settings (

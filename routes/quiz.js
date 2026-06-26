@@ -12,14 +12,43 @@ module.exports = function (getDb, { safeParse, sendError, localNow }, auth) {
     return String(val).replace(/^[A-Za-z][.\s、·:：]+/, '').trim()
   }
 
+  // 获取用户分类限制信息（管理员返回 null 表示不限制）
+  function getCategoryRestriction(db, userId, role) {
+    if (role === 'admin') return null;
+    const user = db.prepare('SELECT restriction_mode FROM users WHERE id = ?').get(userId);
+    const mode = user?.restriction_mode || 'allow';
+    const categories = db.prepare('SELECT category FROM user_category_restrictions WHERE user_id = ?')
+      .all(userId).map(r => r.category);
+    if (categories.length === 0) return null;
+    return { mode, categories };
+  }
+
+  // 将分类限制追加到 WHERE 条件
+  function applyCategoryRestriction(where, params, restriction) {
+    if (!restriction) return where;
+    const placeholders = restriction.categories.map((_, i) => `@rcat${i}`).join(',');
+    if (restriction.mode === 'block') {
+      where += ` AND category NOT IN (${placeholders})`;
+    } else {
+      where += ` AND category IN (${placeholders})`;
+    }
+    restriction.categories.forEach((c, i) => { params[`rcat${i}`] = c; });
+    return where;
+  }
+
   // GET /api/quiz/type-counts — 获取各分类下各题型的数量
   router.get('/type-counts', (req, res) => {
     try {
       const db = getDb();
       const { category } = req.query;
 
+      // 分类限制
+      const restriction = req.user ? getCategoryRestriction(db, req.user.id, req.user.role) : null;
+
       let where = 'WHERE deleted_at IS NULL';
       const params = {};
+      where = applyCategoryRestriction(where, params, restriction);
+
       if (category && category !== '全部') {
         const categories = String(category).split(',').filter(Boolean);
         if (categories.length === 1) {
@@ -50,8 +79,12 @@ module.exports = function (getDb, { safeParse, sendError, localNow }, auth) {
       const { category, type, mode = 'sequential', limit = 50 } = req.query;
       const lim = Math.min(300, Math.max(1, parseInt(limit) || 50));
 
+      // 分类限制
+      const restriction = req.user ? getCategoryRestriction(db, req.user.id, req.user.role) : null;
+
       let where = 'WHERE deleted_at IS NULL';
       const params = {};
+      where = applyCategoryRestriction(where, params, restriction);
       if (category && category !== '全部') {
         const categories = String(category).split(',').filter(Boolean);
         if (categories.length === 1) {

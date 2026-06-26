@@ -4,11 +4,12 @@ const { validateCategoryName } = require('../validate');
 module.exports = function (getDb, { sendError, localNow }, auth) {
   const router = express.Router();
 
-  // GET /api/categories (所有登录用户可访问)
+  // GET /api/categories (所有登录用户可访问，非管理员按限制过滤)
   router.get('/', (req, res) => {
     try {
       const db = getDb();
-      const rows = db.prepare(`
+
+      let rows = db.prepare(`
         SELECT c.id, c.name, c.score, c.notes, c.created_at,
           COALESCE(q.cnt, 0) as question_count
         FROM data_categories c
@@ -19,6 +20,22 @@ module.exports = function (getDb, { sendError, localNow }, auth) {
         ) q ON q.category = c.name
         ORDER BY CASE WHEN c.name = '默认' THEN 0 ELSE 1 END, c.id ASC
       `).all();
+
+      // 非管理员：检查分类限制
+      if (req.user && req.user.role !== 'admin') {
+        const user = db.prepare('SELECT restriction_mode FROM users WHERE id = ?').get(req.user.id);
+        const mode = user?.restriction_mode || 'allow';
+        const restrictions = db.prepare('SELECT category FROM user_category_restrictions WHERE user_id = ?')
+          .all(req.user.id).map(r => r.category);
+        if (restrictions.length > 0) {
+          if (mode === 'block') {
+            rows = rows.filter(r => !restrictions.includes(r.name));
+          } else {
+            rows = rows.filter(r => restrictions.includes(r.name));
+          }
+        }
+      }
+
       res.json(rows);
     } catch (err) { sendError(res, err, 'GET /api/categories'); }
   });
