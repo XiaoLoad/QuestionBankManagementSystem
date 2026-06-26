@@ -171,6 +171,9 @@ module.exports = function (getDb, helpers, auth) {
         return res.status(400).json({ error: '不能删除默认管理员账号' });
       }
 
+      // 先清理该用户的活动日志（外键约束）
+      db.prepare('DELETE FROM user_activity_logs WHERE user_id = ?').run(id);
+
       db.prepare('DELETE FROM users WHERE id = ?').run(id);
 
       res.json({ message: '用户已删除' });
