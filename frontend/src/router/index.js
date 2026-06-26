@@ -6,7 +6,7 @@ const routes = [
     path: '/login',
     name: 'Login',
     component: () => import('@/views/Login.vue'),
-    meta: { title: '登录', requiresAuth: false }
+    meta: { title: '登录', requiresAuth: false, hideBanner: true }
   },
   {
     path: '/',
@@ -24,7 +24,7 @@ const routes = [
     path: '/questions/:id',
     name: 'QuestionDetail',
     component: () => import('@/views/QuestionDetail.vue'),
-    meta: { title: '题目详情' }
+    meta: { title: '题目详情', hideBanner: true }
   },
   {
     path: '/categories',
@@ -72,7 +72,7 @@ const routes = [
     path: '/users/:id/logs',
     name: 'UserActivityLog',
     component: () => import('@/views/UserActivityLog.vue'),
-    meta: { title: '用户活动日志', requiresAdmin: true }
+    meta: { title: '用户活动日志', requiresAdmin: true, hideBanner: true }
   },
   {
     path: '/site-settings',

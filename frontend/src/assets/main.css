@@ -178,8 +178,13 @@ mark.search-highlight {
   margin: 0.5em 0;
   line-height: 1.7;
 }
-.markdown-body ul,
+.markdown-body ul {
+  list-style-type: disc;
+  padding-left: 1.5em;
+  margin: 0.5em 0;
+}
 .markdown-body ol {
+  list-style-type: decimal;
   padding-left: 1.5em;
   margin: 0.5em 0;
 }

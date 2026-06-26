@@ -2,15 +2,26 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useApi } from '@/composables/useApi'
+import { useQuizStore } from '@/stores/quiz'
 import Sidebar from './Sidebar.vue'
 import AnnouncementBanner from './AnnouncementBanner.vue'
 
 const route = useRoute()
 const sidebarOpen = ref(false)
 const api = useApi()
+const quizStore = useQuizStore()
 
 // 登录页不显示侧边栏
 const showSidebar = computed(() => route.path !== '/login')
+
+// 横幅公告显示条件：一级页面且非刷题进行中/结果页
+const showBanner = computed(() => {
+  // 路由标记为 hideBanner 的不显示
+  if (route.meta.hideBanner) return false
+  // 刷题进行中或结果页不显示
+  if (route.path === '/quiz' && quizStore.state !== 'setup') return false
+  return true
+})
 
 // 页脚
 const footerText = ref('')
@@ -67,7 +78,7 @@ onMounted(loadFooter)
 
       <div class="flex-1 flex flex-col overflow-hidden">
         <main :class="['flex-1 overflow-y-auto', showSidebar ? 'p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full' : '']">
-          <AnnouncementBanner />
+          <AnnouncementBanner v-if="showBanner" />
           <slot />
         </main>
         <!-- 页脚 -->
