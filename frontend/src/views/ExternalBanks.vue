@@ -249,9 +249,9 @@ onMounted(async () => {
 
     <!-- Yatori Card -->
     <div class="card mb-6">
-      <div class="flex items-center justify-between mb-5">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
         <div class="flex items-center gap-3">
-          <div class="w-9 h-9 rounded-btn bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center">
+          <div class="w-9 h-9 rounded-btn bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
             <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5"/>
             </svg>
@@ -318,20 +318,20 @@ onMounted(async () => {
         </div>
 
         <!-- Stats -->
-        <div class="flex flex-wrap gap-3 pt-2">
-          <div class="flex items-center gap-2 px-3 py-1.5 rounded-btn bg-gray-50 dark:bg-gray-800/50 text-sm">
+        <div class="flex flex-wrap gap-2 sm:gap-3 pt-2">
+          <div class="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 rounded-btn bg-gray-50 dark:bg-gray-800/50 text-xs sm:text-sm">
             <span class="text-notion-muted dark:text-notion-muted-dark">今日查询</span>
             <span class="font-semibold text-notion-text dark:text-notion-text-dark">{{ stats.yatori.total }}</span>
           </div>
-          <div class="flex items-center gap-2 px-3 py-1.5 rounded-btn bg-emerald-50 dark:bg-emerald-900/20 text-sm">
+          <div class="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 rounded-btn bg-emerald-50 dark:bg-emerald-900/20 text-xs sm:text-sm">
             <span class="text-emerald-600 dark:text-emerald-400">本地命中</span>
             <span class="font-semibold text-emerald-700 dark:text-emerald-300">{{ stats.yatori.local }}</span>
           </div>
-          <div class="flex items-center gap-2 px-3 py-1.5 rounded-btn bg-blue-50 dark:bg-blue-900/20 text-sm">
+          <div class="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 rounded-btn bg-blue-50 dark:bg-blue-900/20 text-xs sm:text-sm">
             <span class="text-blue-600 dark:text-blue-400">AI 补充</span>
             <span class="font-semibold text-blue-700 dark:text-blue-300">{{ stats.yatori.ai }}</span>
           </div>
-          <div class="flex items-center gap-2 px-3 py-1.5 rounded-btn bg-gray-50 dark:bg-gray-800/50 text-sm">
+          <div class="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 rounded-btn bg-gray-50 dark:bg-gray-800/50 text-xs sm:text-sm">
             <span class="text-notion-muted dark:text-notion-muted-dark">未找到</span>
             <span class="font-semibold text-notion-text dark:text-notion-text-dark">{{ stats.yatori.notFound }}</span>
           </div>
@@ -341,9 +341,9 @@ onMounted(async () => {
 
     <!-- OCS Card -->
     <div class="card mb-6">
-      <div class="flex items-center justify-between mb-5">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
         <div class="flex items-center gap-3">
-          <div class="w-9 h-9 rounded-btn bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center">
+          <div class="w-9 h-9 rounded-btn bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center flex-shrink-0">
             <svg class="w-5 h-5 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
             </svg>
@@ -410,20 +410,20 @@ onMounted(async () => {
         </div>
 
         <!-- Stats -->
-        <div class="flex flex-wrap gap-3 pt-2">
-          <div class="flex items-center gap-2 px-3 py-1.5 rounded-btn bg-gray-50 dark:bg-gray-800/50 text-sm">
+        <div class="flex flex-wrap gap-2 sm:gap-3 pt-2">
+          <div class="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 rounded-btn bg-gray-50 dark:bg-gray-800/50 text-xs sm:text-sm">
             <span class="text-notion-muted dark:text-notion-muted-dark">今日查询</span>
             <span class="font-semibold text-notion-text dark:text-notion-text-dark">{{ stats.ocs.total }}</span>
           </div>
-          <div class="flex items-center gap-2 px-3 py-1.5 rounded-btn bg-emerald-50 dark:bg-emerald-900/20 text-sm">
+          <div class="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 rounded-btn bg-emerald-50 dark:bg-emerald-900/20 text-xs sm:text-sm">
             <span class="text-emerald-600 dark:text-emerald-400">本地命中</span>
             <span class="font-semibold text-emerald-700 dark:text-emerald-300">{{ stats.ocs.local }}</span>
           </div>
-          <div class="flex items-center gap-2 px-3 py-1.5 rounded-btn bg-blue-50 dark:bg-blue-900/20 text-sm">
+          <div class="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 rounded-btn bg-blue-50 dark:bg-blue-900/20 text-xs sm:text-sm">
             <span class="text-blue-600 dark:text-blue-400">AI 补充</span>
             <span class="font-semibold text-blue-700 dark:text-blue-300">{{ stats.ocs.ai }}</span>
           </div>
-          <div class="flex items-center gap-2 px-3 py-1.5 rounded-btn bg-gray-50 dark:bg-gray-800/50 text-sm">
+          <div class="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 rounded-btn bg-gray-50 dark:bg-gray-800/50 text-xs sm:text-sm">
             <span class="text-notion-muted dark:text-notion-muted-dark">未找到</span>
             <span class="font-semibold text-notion-text dark:text-notion-text-dark">{{ stats.ocs.notFound }}</span>
           </div>
@@ -433,9 +433,9 @@ onMounted(async () => {
 
     <!-- Query Logs Card -->
     <div class="card">
-      <div class="flex items-center justify-between mb-5">
+      <div class="flex flex-col gap-4 mb-5">
         <div class="flex items-center gap-3">
-          <div class="w-9 h-9 rounded-btn bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+          <div class="w-9 h-9 rounded-btn bg-gray-100 dark:bg-gray-800 flex items-center justify-center flex-shrink-0">
             <svg class="w-5 h-5 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
             </svg>
@@ -493,16 +493,17 @@ onMounted(async () => {
         <div v-else-if="logs.length === 0" class="text-center py-8 text-sm text-notion-muted dark:text-notion-muted-dark">
           暂无查询记录
         </div>
-        <table v-else class="w-full text-sm">
-          <thead>
+        <div v-else class="max-h-[400px] sm:max-h-[480px] overflow-y-auto">
+        <table class="w-full text-sm">
+          <thead class="sticky top-0 z-10 bg-white dark:bg-gray-800">
             <tr class="border-b border-notion-border dark:border-notion-border-dark">
-              <th class="text-left py-2 px-3 font-medium text-notion-muted dark:text-notion-muted-dark text-xs">时间</th>
-              <th class="text-left py-2 px-3 font-medium text-notion-muted dark:text-notion-muted-dark text-xs">来源</th>
-              <th class="text-left py-2 px-3 font-medium text-notion-muted dark:text-notion-muted-dark text-xs">题目</th>
-              <th class="text-left py-2 px-3 font-medium text-notion-muted dark:text-notion-muted-dark text-xs">题型</th>
-              <th class="text-left py-2 px-3 font-medium text-notion-muted dark:text-notion-muted-dark text-xs">结果</th>
-              <th class="text-left py-2 px-3 font-medium text-notion-muted dark:text-notion-muted-dark text-xs">答案</th>
-              <th class="text-right py-2 px-3 font-medium text-notion-muted dark:text-notion-muted-dark text-xs">耗时</th>
+              <th class="text-left py-2 px-2 sm:px-3 font-medium text-notion-muted dark:text-notion-muted-dark text-xs">时间</th>
+              <th class="text-left py-2 px-2 sm:px-3 font-medium text-notion-muted dark:text-notion-muted-dark text-xs">来源</th>
+              <th class="text-left py-2 px-2 sm:px-3 font-medium text-notion-muted dark:text-notion-muted-dark text-xs">题目</th>
+              <th class="hidden sm:table-cell text-left py-2 px-3 font-medium text-notion-muted dark:text-notion-muted-dark text-xs">题型</th>
+              <th class="text-left py-2 px-2 sm:px-3 font-medium text-notion-muted dark:text-notion-muted-dark text-xs">结果</th>
+              <th class="text-left py-2 px-2 sm:px-3 font-medium text-notion-muted dark:text-notion-muted-dark text-xs">答案</th>
+              <th class="hidden sm:table-cell text-right py-2 px-3 font-medium text-notion-muted dark:text-notion-muted-dark text-xs">耗时</th>
             </tr>
           </thead>
           <tbody>
@@ -511,26 +512,26 @@ onMounted(async () => {
               :key="log.id"
               class="border-b border-notion-border/50 dark:border-notion-border-dark/50 hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors"
             >
-              <td class="py-2.5 px-3 text-notion-muted dark:text-notion-muted-dark whitespace-nowrap">
+              <td class="py-2.5 px-2 sm:px-3 text-notion-muted dark:text-notion-muted-dark whitespace-nowrap">
                 <span class="text-xs">{{ formatDate(log.created_at) }}</span>
-                <span class="text-xs ml-1 opacity-70">{{ formatTime(log.created_at) }}</span>
+                <span class="hidden sm:inline text-xs ml-1 opacity-70">{{ formatTime(log.created_at) }}</span>
               </td>
-              <td class="py-2.5 px-3">
+              <td class="py-2.5 px-2 sm:px-3">
                 <span class="text-xs font-medium text-notion-text dark:text-notion-text-dark">{{ sourceLabel[log.source] || log.source }}</span>
               </td>
-              <td class="py-2.5 px-3 max-w-[200px]">
-                <span class="text-notion-text dark:text-notion-text-dark" :title="log.content">{{ truncate(log.content, 25) }}</span>
+              <td class="py-2.5 px-2 sm:px-3 max-w-[120px] sm:max-w-[200px]">
+                <span class="text-xs sm:text-sm text-notion-text dark:text-notion-text-dark truncate block" :title="log.content">{{ truncate(log.content, 15) }}</span>
               </td>
-              <td class="py-2.5 px-3 text-notion-muted dark:text-notion-muted-dark text-xs">{{ log.type || '-' }}</td>
-              <td class="py-2.5 px-3">
-                <span :class="['inline-block px-2 py-0.5 rounded text-xs font-medium', resultColor[log.result]]">
+              <td class="hidden sm:table-cell py-2.5 px-3 text-notion-muted dark:text-notion-muted-dark text-xs">{{ log.type || '-' }}</td>
+              <td class="py-2.5 px-2 sm:px-3">
+                <span :class="['inline-block px-1.5 sm:px-2 py-0.5 rounded text-xs font-medium', resultColor[log.result]]">
                   {{ resultLabel[log.result] || log.result }}
                 </span>
               </td>
-              <td class="py-2.5 px-3 max-w-[200px]">
-                <span class="text-xs text-notion-text dark:text-notion-text-dark" :title="log.answer">{{ truncate(log.answer, 20) || '-' }}</span>
+              <td class="py-2.5 px-2 sm:px-3 max-w-[100px] sm:max-w-[200px]">
+                <span class="text-xs text-notion-text dark:text-notion-text-dark truncate block" :title="log.answer">{{ truncate(log.answer, 10) || '-' }}</span>
               </td>
-              <td class="py-2.5 px-3 text-right whitespace-nowrap">
+              <td class="hidden sm:table-cell py-2.5 px-3 text-right whitespace-nowrap">
                 <span :class="[
                   'text-xs',
                   log.cost_ms < 100 ? 'text-emerald-600 dark:text-emerald-400' :
@@ -543,6 +544,7 @@ onMounted(async () => {
             </tr>
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   </div>
