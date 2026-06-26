@@ -362,6 +362,10 @@
               <label class="block text-sm font-medium text-notion-text dark:text-notion-text-dark mb-2">新密码 *</label>
               <input v-model="resetForm.newPassword" type="password" class="input-field" placeholder="至少6位" required />
             </div>
+            <div>
+              <label class="block text-sm font-medium text-notion-text dark:text-notion-text-dark mb-2">确认密码 *</label>
+              <input v-model="resetForm.confirmPassword" type="password" class="input-field" placeholder="再次输入新密码" required />
+            </div>
             <div v-if="resetError" class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
               <p class="text-sm text-red-600 dark:text-red-400">{{ resetError }}</p>
             </div>
@@ -432,7 +436,8 @@ const resetError = ref('')
 const resetForm = ref({
   id: null,
   username: '',
-  newPassword: ''
+  newPassword: '',
+  confirmPassword: ''
 })
 
 function formatDate(dateStr) {
@@ -579,6 +584,12 @@ async function handleResetPassword() {
   resetLoading.value = true
   resetError.value = ''
 
+  if (resetForm.value.newPassword !== resetForm.value.confirmPassword) {
+    resetError.value = '两次输入的密码不一致'
+    resetLoading.value = false
+    return
+  }
+
   try {
     const res = await fetch(`/api/users/${resetForm.value.id}/reset-password`, {
       method: 'POST',
@@ -609,7 +620,7 @@ async function handleResetPassword() {
 
 function closeResetModal() {
   showResetModal.value = false
-  resetForm.value = { id: null, username: '', newPassword: '' }
+  resetForm.value = { id: null, username: '', newPassword: '', confirmPassword: '' }
   resetError.value = ''
 }
 
