@@ -194,9 +194,9 @@ function saveProgress() {
   quizStore.saveProgress();
 }
 
-// 上报刷题结果（带去重）
+// 上报刷题结果（带去重，复习模式不上报）
 function reportResult() {
-  if (resultReported.value || records.value.length === 0) return;
+  if (resultReported.value || records.value.length === 0 || reviewMode.value) return;
   resultReported.value = true;
   quizStore.resultReported = true;
   quizStore.saveProgress();
@@ -238,6 +238,7 @@ async function startQuiz() {
       type: selectedTypes.value.length > 0 ? selectedTypes.value.join(",") : "",
       mode: selectedMode.value,
       limit: questionLimit.value,
+      ...(reviewMode.value ? { review: '1' } : {}),
     });
     if (res.items.length === 0) {
       toast.error("该分类下没有题目");

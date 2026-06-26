@@ -33,6 +33,10 @@
         <p class="text-xs text-notion-muted dark:text-notion-muted-dark">刷题次数</p>
         <p class="text-xl sm:text-2xl font-bold text-notion-text dark:text-notion-text-dark mt-1">{{ stats.totalQuizSessions || 0 }}</p>
       </div>
+      <div class="card p-3 sm:p-4">
+        <p class="text-xs text-notion-muted dark:text-notion-muted-dark">复习次数</p>
+        <p class="text-xl sm:text-2xl font-bold text-notion-text dark:text-notion-text-dark mt-1">{{ stats.totalReviewSessions || 0 }}</p>
+      </div>
       <div class="card p-3 sm:p-4 col-span-2 sm:col-span-1">
         <p class="text-xs text-notion-muted dark:text-notion-muted-dark">常刷题库</p>
         <p class="text-sm sm:text-base font-medium text-notion-text dark:text-notion-text-dark mt-1 truncate">
@@ -56,6 +60,10 @@
           @click="filterAction = 'quiz_start'; loadLogs()"
           :class="['px-3 py-1.5 text-xs rounded-btn border transition-colors', filterAction === 'quiz_start' ? 'border-notion-accent dark:border-notion-accent-dark bg-notion-accent/10 dark:bg-notion-accent-dark/15 text-notion-accent dark:text-notion-accent-dark' : 'border-notion-border dark:border-notion-border-dark text-notion-muted dark:text-notion-muted-dark hover:bg-gray-100 dark:hover:bg-gray-800']"
         >刷题</button>
+        <button
+          @click="filterAction = 'review_start'; loadLogs()"
+          :class="['px-3 py-1.5 text-xs rounded-btn border transition-colors', filterAction === 'review_start' ? 'border-notion-accent dark:border-notion-accent-dark bg-notion-accent/10 dark:bg-notion-accent-dark/15 text-notion-accent dark:text-notion-accent-dark' : 'border-notion-border dark:border-notion-border-dark text-notion-muted dark:text-notion-muted-dark hover:bg-gray-100 dark:hover:bg-gray-800']"
+        >复习</button>
         <button
           @click="filterAction = 'quiz_end'; loadLogs()"
           :class="['px-3 py-1.5 text-xs rounded-btn border transition-colors', filterAction === 'quiz_end' ? 'border-notion-accent dark:border-notion-accent-dark bg-notion-accent/10 dark:bg-notion-accent-dark/15 text-notion-accent dark:text-notion-accent-dark' : 'border-notion-border dark:border-notion-border-dark text-notion-muted dark:text-notion-muted-dark hover:bg-gray-100 dark:hover:bg-gray-800']"
@@ -83,12 +91,15 @@
         <div v-for="log in logs" :key="log.id" class="p-3 sm:p-4 hover:bg-notion-surface/50 dark:hover:bg-notion-surface-dark/50 transition-colors">
           <div class="flex items-start gap-3">
             <!-- Icon -->
-            <div :class="['flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center', log.action === 'login' ? 'bg-blue-100 dark:bg-blue-900/30' : log.action === 'quiz_end' ? 'bg-amber-100 dark:bg-amber-900/30' : 'bg-green-100 dark:bg-green-900/30']">
+            <div :class="['flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center', log.action === 'login' ? 'bg-blue-100 dark:bg-blue-900/30' : log.action === 'quiz_end' ? 'bg-amber-100 dark:bg-amber-900/30' : log.action === 'review_start' ? 'bg-purple-100 dark:bg-purple-900/30' : 'bg-green-100 dark:bg-green-900/30']">
               <svg v-if="log.action === 'login'" class="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
               </svg>
               <svg v-else-if="log.action === 'quiz_end'" class="w-4 h-4 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <svg v-else-if="log.action === 'review_start'" class="w-4 h-4 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
               </svg>
               <svg v-else class="w-4 h-4 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
@@ -99,14 +110,14 @@
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2 mb-1">
                 <span class="text-sm font-medium text-notion-text dark:text-notion-text-dark">
-                  {{ log.action === 'login' ? '登录系统' : log.action === 'quiz_start' ? '开始刷题' : '完成刷题' }}
+                  {{ log.action === 'login' ? '登录系统' : log.action === 'quiz_start' ? '开始刷题' : log.action === 'review_start' ? '开始复习' : '完成刷题' }}
                 </span>
                 <span class="text-[10px] text-notion-muted dark:text-notion-muted-dark">
                   {{ formatDate(log.created_at) }}
                 </span>
               </div>
               <div v-if="log.detail" class="text-xs text-notion-muted dark:text-notion-muted-dark">
-                <template v-if="log.action === 'quiz_start'">
+                <template v-if="log.action === 'quiz_start' || log.action === 'review_start'">
                   <span v-if="log.detail.category">题库：{{ log.detail.category }}</span>
                   <span v-if="log.detail.count" class="ml-2">题目：{{ log.detail.count }} 题</span>
                   <span v-if="log.detail.types" class="ml-2">题型：{{ log.detail.types.join('、') }}</span>

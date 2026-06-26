@@ -108,6 +108,10 @@ module.exports = function (getDb, helpers, auth) {
         "SELECT COUNT(*) as cnt FROM user_activity_logs WHERE user_id = ? AND action = 'quiz_start'"
       ).get(userId).cnt;
 
+      const totalReviewSessions = db.prepare(
+        "SELECT COUNT(*) as cnt FROM user_activity_logs WHERE user_id = ? AND action = 'review_start'"
+      ).get(userId).cnt;
+
       const recentLogs = db.prepare(`
         SELECT * FROM user_activity_logs
         WHERE user_id = ?
@@ -120,7 +124,7 @@ module.exports = function (getDb, helpers, auth) {
           json_extract(detail, '$.category') as category,
           COUNT(*) as cnt
         FROM user_activity_logs
-        WHERE user_id = ? AND action = 'quiz_start' AND detail IS NOT NULL
+        WHERE user_id = ? AND action IN ('quiz_start', 'review_start') AND detail IS NOT NULL
         GROUP BY category
         ORDER BY cnt DESC
       `).all(userId);
@@ -129,6 +133,7 @@ module.exports = function (getDb, helpers, auth) {
         user,
         totalLogins,
         totalQuizSessions,
+        totalReviewSessions,
         quizByCategory,
         recentLogs: recentLogs.map(l => ({ ...l, detail: l.detail ? helpers.safeParse(l.detail) : null })),
       });

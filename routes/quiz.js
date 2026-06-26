@@ -85,13 +85,14 @@ module.exports = function (getDb, { safeParse, sendError, localNow }, auth) {
         images: row.images ? safeParse(row.images) : [],
       }));
 
-      // 记录刷题开始日志
+      // 记录开始日志（区分刷题和复习模式）
       if (req.user && items.length > 0) {
         try {
+          const isReview = req.query.review === '1' || req.query.review === 'true';
           const types = [...new Set(items.map(i => i.type))];
           const cats = [...new Set(items.map(i => i.category).filter(Boolean))];
           db.prepare('INSERT INTO user_activity_logs (user_id, action, detail, created_at) VALUES (?, ?, ?, ?)')
-            .run(req.user.id, 'quiz_start', JSON.stringify({
+            .run(req.user.id, isReview ? 'review_start' : 'quiz_start', JSON.stringify({
               category: category || '全部',
               types: types,
               categories: cats,
