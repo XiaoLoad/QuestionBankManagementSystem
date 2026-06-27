@@ -57,7 +57,7 @@ export function stripAnswerPrefix(answers, options) {
 
 /**
  * Normalize answer for comparison — converts letter indices (A/B/C/D) to full option text,
- * strips letter prefixes like "A. xxx" → "xxx".
+ * strips letter prefixes like "A. xxx" → "xxx", and normalizes semantic equivalents.
  * @param {Array} answers
  * @param {Array} [options] - option list for letter→text mapping
  * @returns {string[]}
@@ -65,14 +65,24 @@ export function stripAnswerPrefix(answers, options) {
 export function normalizeAnswer(answers, options) {
   if (!answers || !Array.isArray(answers)) return []
   return answers.map(a => {
-    const trimmed = String(a).trim()
+    let trimmed = String(a).trim()
+    // Strip leading letter prefix: "C." "C、" "C:" "C " etc.
+    trimmed = trimmed.replace(/^[A-Z][.\s、·:：]+/, '').trim()
+    // Letter index to option text
     if (/^[A-Z]$/.test(trimmed) && options && options.length > 0) {
       const idx = trimmed.charCodeAt(0) - 65
       if (idx >= 0 && idx < options.length) {
         return options[idx].replace(/^[A-Z][.\s、·:：]+/, '').trim()
       }
     }
-    return trimmed.replace(/^[A-Z][.\s、·:：]+/, '').trim()
+    // Normalize semantic equivalents for judgment questions
+    if (trimmed === '正确' || trimmed === '√' || trimmed === 'T' || trimmed === 'true' || trimmed === 'True') {
+      return '对'
+    }
+    if (trimmed === '错误' || trimmed === '×' || trimmed === 'F' || trimmed === 'false' || trimmed === 'False') {
+      return '错'
+    }
+    return trimmed
   })
 }
 

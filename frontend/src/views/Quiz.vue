@@ -5,6 +5,7 @@ import { useAuthStore } from "@/stores/auth";
 import { useQuizStore } from "@/stores/quiz";
 import { useToastStore } from "@/stores/toast";
 import { QUESTION_TYPES } from "@/composables/constants";
+import { normalizeAnswer } from "@/composables/utils";
 import SearchableSelect from "@/components/SearchableSelect.vue";
 
 defineOptions({ name: "Quiz" });
@@ -1169,7 +1170,7 @@ function getBoolClass(val) {
                       <p class="text-[10px] sm:text-xs text-purple-600 dark:text-purple-400 mb-1">AI 答案：</p>
                       <div class="flex flex-wrap gap-1">
                         <span
-                          v-for="(ans, i) in (currentQuestion.ai_answer || aiAnalysisResult?.answer || [])"
+                          v-for="(ans, i) in normalizeAnswer(currentQuestion.ai_answer || aiAnalysisResult?.answer || [], currentQuestion.options)"
                           :key="i"
                           class="px-1.5 py-0.5 rounded text-[10px] sm:text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300"
                         >

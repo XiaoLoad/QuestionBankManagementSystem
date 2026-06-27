@@ -315,7 +315,7 @@ function answersMatch(aiAnswers, currentAnswers) {
           <h4 class="text-xs font-medium text-notion-muted dark:text-notion-muted-dark mb-1">AI 答案</h4>
           <div class="flex flex-wrap gap-2">
             <span
-              v-for="(ans, i) in aiResult.answer"
+              v-for="(ans, i) in normalizeAnswer(aiResult.answer, renderOptions(question.options))"
               :key="i"
               class="px-3 py-1.5 rounded-badge text-sm font-medium"
               :class="answersMatch(aiResult.answer, renderAnswers(question.answers))
