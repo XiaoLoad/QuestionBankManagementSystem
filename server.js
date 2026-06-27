@@ -85,6 +85,9 @@ function initDatabase(db) {
   // Migration: add ai_answer column (AI 答案缓存)
   try { db.exec(`ALTER TABLE data_questions ADD COLUMN ai_answer TEXT`); } catch {}
 
+  // Migration: add ai_answer_status column (AI 答案标记状态)
+  try { db.exec(`ALTER TABLE data_questions ADD COLUMN ai_answer_status TEXT DEFAULT NULL`); } catch {}
+
   // Migration: add enabled column to ai_providers
   try { db.exec(`ALTER TABLE ai_providers ADD COLUMN enabled INTEGER DEFAULT 1`); } catch {}
 

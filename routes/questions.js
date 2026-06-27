@@ -161,6 +161,29 @@ module.exports = function (getDb, { md5, safeParse, sendError, localNow }, auth)
     } catch (err) { sendError(res, err, 'PUT /api/questions/:id'); }
   });
 
+  // PUT /api/questions/:id/ai-status (更新 AI 答案标记状态)
+  router.put('/:id/ai-status', auth.adminRequired, (req, res) => {
+    try {
+      const db = getDb();
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: '无效的题目 ID' });
+
+      const { status } = req.body;
+      // 允许 null 或有效的状态值
+      const validStatuses = ['consistent', 'similar', 'different'];
+      if (status !== null && !validStatuses.includes(status)) {
+        return res.status(400).json({ error: '无效的状态值' });
+      }
+
+      const existing = db.prepare('SELECT id FROM data_questions WHERE id = ? AND deleted_at IS NULL').get(id);
+      if (!existing) return res.status(404).json({ error: '题目不存在' });
+
+      const now = localNow();
+      db.prepare('UPDATE data_questions SET ai_answer_status = ?, updated_at = ? WHERE id = ?').run(status, now, id);
+      res.json({ message: '标记状态已更新', status });
+    } catch (err) { sendError(res, err, 'PUT /api/questions/:id/ai-status'); }
+  });
+
   // DELETE /api/questions/:id (soft delete, 仅管理员)
   router.delete('/:id', auth.adminRequired, (req, res) => {
     try {

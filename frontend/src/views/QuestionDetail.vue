@@ -1,15 +1,17 @@
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useApi } from '@/composables/useApi'
 import { useToastStore } from '@/stores/toast'
 import { useConfirmStore } from '@/stores/confirm'
 import { useAiTaskStore } from '@/stores/aiTask'
+import { useAuthStore } from '@/stores/auth'
 import { TYPE_COLORS } from '@/composables/constants'
 import { formatDate, formatJson } from '@/composables/utils'
 import { normalizeAnswer } from '@/composables/utils'
 import QuestionFormModal from '@/components/QuestionFormModal.vue'
 import AiAnalyzeModal from '@/components/AiAnalyzeModal.vue'
+import ReplaceAnswerDialog from '@/components/ReplaceAnswerDialog.vue'
 
 defineOptions({ name: 'QuestionDetail' })
 
@@ -19,12 +21,16 @@ const api = useApi()
 const toast = useToastStore()
 const confirm = useConfirmStore()
 const aiTask = useAiTaskStore()
+const auth = useAuthStore()
 
 const question = ref(null)
 const loading = ref(true)
 const categories = ref([])
 const showEditForm = ref(false)
 const showAiModal = ref(false)
+const showReplaceDialog = ref(false)
+const pendingAiAnswers = ref([])
+const statusMenuRef = ref(null)
 
 // AI analyze state
 const analyzing = ref(false)
@@ -44,8 +50,24 @@ const aiButtonText = computed(() => {
 })
 const rawExpanded = ref(false)
 const aiStreamCache = ref(null) // 缓存流式结果
+const showStatusMenu = ref(false) // 标记状态菜单
+
+// AI 答案标记状态配置
+const statusConfig = {
+  consistent: { label: '完全一致', icon: '✓', color: 'green' },
+  similar: { label: '基本一致', icon: '≈', color: 'yellow' },
+  different: { label: '答案不同', icon: '✗', color: 'red' },
+}
+
+// 当前标记状态
+const currentAiStatus = computed(() => {
+  return question.value?.ai_answer_status || null
+})
 
 onMounted(async () => {
+  // 添加点击外部关闭菜单的监听器
+  document.addEventListener('click', handleClickOutside)
+
   try {
     const [q, cats] = await Promise.all([
       api.getQuestion(route.params.id),
@@ -79,6 +101,10 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
 })
 
 function openEdit() {
@@ -183,6 +209,99 @@ function handleAiResult(result) {
 function handleAiClose() {
   showAiModal.value = false
   aiTask.setModalOpen(false)
+}
+
+// 替换为 AI 答案 - 显示确认弹窗
+async function handleReplaceWithAiAnswer() {
+  if (!aiResult.value?.answer) return
+
+  const aiAnswers = normalizeAnswer(aiResult.value.answer, renderOptions(question.value.options))
+  pendingAiAnswers.value = aiAnswers
+  showReplaceDialog.value = true
+}
+
+// 确认替换答案
+async function handleReplaceConfirm() {
+  const aiAnswers = pendingAiAnswers.value
+  showReplaceDialog.value = false
+
+  try {
+    await api.updateQuestion(question.value.id, {
+      type: question.value.type,
+      content: question.value.content,
+      options: question.value.options,
+      answers: aiAnswers,
+      category: question.value.category,
+      images: question.value.images,
+    })
+    toast.success('答案已更新为 AI 答案')
+    // 刷新题目数据
+    question.value = await api.getQuestion(route.params.id)
+  } catch (err) {
+    if (err.status === 409 && err.data?.error === 'duplicate') {
+      // 处理重复题目冲突
+      const forceOk = await confirm.show({
+        title: '题目重复',
+        message: '该题目已存在，是否强制更新？',
+        confirmText: '强制更新',
+        danger: true,
+      })
+      if (forceOk) {
+        try {
+          await api.updateQuestion(question.value.id, {
+            type: question.value.type,
+            content: question.value.content,
+            options: question.value.options,
+            answers: aiAnswers,
+            category: question.value.category,
+            images: question.value.images,
+            force: true,
+          })
+          toast.success('答案已更新为 AI 答案')
+          question.value = await api.getQuestion(route.params.id)
+        } catch (e) {
+          // handled
+        }
+      }
+    }
+  }
+}
+
+// 取消替换
+function handleReplaceCancel() {
+  showReplaceDialog.value = false
+  pendingAiAnswers.value = []
+}
+
+// 更新 AI 答案标记状态
+async function handleUpdateAiStatus(status) {
+  try {
+    await api.updateQuestionAiStatus(question.value.id, status)
+    question.value.ai_answer_status = status
+    showStatusMenu.value = false
+    toast.success(`已标记为「${statusConfig[status].label}」`)
+  } catch (err) {
+    // handled
+  }
+}
+
+// 清除 AI 答案标记状态
+async function handleClearAiStatus() {
+  try {
+    await api.updateQuestionAiStatus(question.value.id, null)
+    question.value.ai_answer_status = null
+    showStatusMenu.value = false
+    toast.success('已清除标记')
+  } catch (err) {
+    // handled
+  }
+}
+
+// 点击外部关闭状态菜单
+function handleClickOutside(e) {
+  if (statusMenuRef.value && !statusMenuRef.value.contains(e.target)) {
+    showStatusMenu.value = false
+  }
 }
 
 // 监听任务完成，同步状态到本地
@@ -367,7 +486,11 @@ function answersMatch(aiAnswers, currentAnswers) {
         </div>
       </div>
 
-      <div v-if="aiResult" class="card mb-6 border-l-4" :class="answersMatch(aiResult.answer, renderAnswers(question.answers)) === false ? 'border-amber-400' : 'border-green-400'">
+      <div v-if="aiResult" class="card mb-6 border-l-4" :class="currentAiStatus
+        ? statusConfig[currentAiStatus].color === 'green' ? 'border-green-400'
+          : statusConfig[currentAiStatus].color === 'yellow' ? 'border-yellow-400'
+          : 'border-red-400'
+        : answersMatch(aiResult.answer, renderAnswers(question.answers)) === false ? 'border-amber-400' : 'border-green-400'">
         <div class="flex items-center gap-2 mb-3">
           <svg class="w-5 h-5 text-notion-accent dark:text-notion-accent-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5"/>
@@ -385,7 +508,85 @@ function answersMatch(aiAnswers, currentAnswers) {
 
         <!-- AI Answer -->
         <div class="mb-3">
-          <h4 class="text-xs font-medium text-notion-muted dark:text-notion-muted-dark mb-1">AI 答案</h4>
+          <div class="flex items-center justify-between mb-1">
+            <h4 class="text-xs font-medium text-notion-muted dark:text-notion-muted-dark">AI 答案</h4>
+            <div class="flex items-center gap-2">
+              <!-- 标记状态按钮（仅管理员可见） -->
+              <div v-if="auth.isAdmin" class="relative" ref="statusMenuRef">
+                <button
+                  @click="showStatusMenu = !showStatusMenu"
+                  class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded
+                         transition-all duration-150"
+                  :class="currentAiStatus
+                    ? statusConfig[currentAiStatus].color === 'green'
+                      ? 'bg-green-50 text-green-600 border border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800'
+                      : statusConfig[currentAiStatus].color === 'yellow'
+                        ? 'bg-yellow-50 text-yellow-600 border border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-400 dark:border-yellow-800'
+                        : 'bg-red-50 text-red-600 border border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800'
+                    : 'bg-gray-50 text-gray-600 border border-gray-200 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700 dark:hover:bg-gray-700'"
+                >
+                  <span v-if="currentAiStatus">{{ statusConfig[currentAiStatus].icon }}</span>
+                  <span>{{ currentAiStatus ? statusConfig[currentAiStatus].label : '标记状态' }}</span>
+                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                  </svg>
+                </button>
+
+                <!-- 下拉菜单 -->
+                <Transition name="dropdown">
+                  <div
+                    v-if="showStatusMenu"
+                    class="absolute right-0 mt-1 w-40 bg-white dark:bg-gray-800 rounded-card shadow-lg border border-notion-border dark:border-notion-border-dark z-10"
+                  >
+                    <div class="py-1">
+                      <button
+                        v-for="(config, key) in statusConfig"
+                        :key="key"
+                        @click="handleUpdateAiStatus(key)"
+                        class="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                        :class="currentAiStatus === key ? 'bg-gray-50 dark:bg-gray-700' : ''"
+                      >
+                        <span :class="{
+                          'text-green-500': config.color === 'green',
+                          'text-yellow-500': config.color === 'yellow',
+                          'text-red-500': config.color === 'red'
+                        }">{{ config.icon }}</span>
+                        <span class="text-notion-text dark:text-notion-text-dark">{{ config.label }}</span>
+                        <svg v-if="currentAiStatus === key" class="w-4 h-4 ml-auto text-notion-accent dark:text-notion-accent-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                      </button>
+                      <div v-if="currentAiStatus" class="border-t border-notion-border dark:border-notion-border-dark">
+                        <button
+                          @click="handleClearAiStatus"
+                          class="w-full px-3 py-2 text-left text-sm text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                        >
+                          清除标记
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </Transition>
+              </div>
+
+              <!-- 使用此答案按钮（仅管理员可见） -->
+              <button
+                v-if="auth.isAdmin && answersMatch(aiResult.answer, renderAnswers(question.answers)) === false && currentAiStatus !== 'consistent' && currentAiStatus !== 'similar'"
+                @click="handleReplaceWithAiAnswer"
+                class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded
+                       bg-amber-50 text-amber-600 border border-amber-200
+                       hover:bg-amber-100 hover:border-amber-300
+                       dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800
+                       dark:hover:bg-amber-900/30 dark:hover:border-amber-700
+                       transition-all duration-150"
+              >
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                </svg>
+                使用此答案
+              </button>
+            </div>
+          </div>
           <div class="flex flex-wrap gap-2">
             <span
               v-for="(ans, i) in normalizeAnswer(aiResult.answer, renderOptions(question.options))"
@@ -401,13 +602,23 @@ function answersMatch(aiAnswers, currentAnswers) {
         </div>
 
         <!-- Match status -->
-        <div v-if="answersMatch(aiResult.answer, renderAnswers(question.answers)) === true" class="flex items-center gap-2 text-green-600 dark:text-green-400 text-sm">
+        <div v-if="currentAiStatus" class="flex items-center gap-2 text-sm mt-2"
+          :class="{
+            'text-green-600 dark:text-green-400': statusConfig[currentAiStatus].color === 'green',
+            'text-yellow-600 dark:text-yellow-400': statusConfig[currentAiStatus].color === 'yellow',
+            'text-red-600 dark:text-red-400': statusConfig[currentAiStatus].color === 'red'
+          }"
+        >
+          <span class="font-medium">{{ statusConfig[currentAiStatus].icon }}</span>
+          <span>已标记为「{{ statusConfig[currentAiStatus].label }}」</span>
+        </div>
+        <div v-else-if="answersMatch(aiResult.answer, renderAnswers(question.answers)) === true" class="flex items-center gap-2 text-green-600 dark:text-green-400 text-sm mt-2">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
           </svg>
           AI 答案与当前答案一致
         </div>
-        <div v-else-if="answersMatch(aiResult.answer, renderAnswers(question.answers)) === false" class="flex items-center gap-2 text-amber-600 dark:text-amber-400 text-sm">
+        <div v-else-if="answersMatch(aiResult.answer, renderAnswers(question.answers)) === false" class="flex items-center gap-2 text-amber-600 dark:text-amber-400 text-sm mt-2">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/>
           </svg>
@@ -481,5 +692,32 @@ function answersMatch(aiAnswers, currentAnswers) {
       @close="handleAiClose"
       @result="handleAiResult"
     />
+
+    <!-- Replace Answer Dialog -->
+    <ReplaceAnswerDialog
+      v-if="showReplaceDialog"
+      :currentAnswers="renderAnswers(question?.answers)"
+      :aiAnswers="pendingAiAnswers"
+      @confirm="handleReplaceConfirm"
+      @cancel="handleReplaceCancel"
+    />
   </div>
 </template>
+
+<style scoped>
+/* 下拉菜单动画 */
+.dropdown-enter-active {
+  transition: all 0.2s ease-out;
+}
+.dropdown-leave-active {
+  transition: all 0.15s ease-in;
+}
+.dropdown-enter-from {
+  opacity: 0;
+  transform: translateY(-8px) scale(0.95);
+}
+.dropdown-leave-to {
+  opacity: 0;
+  transform: translateY(-4px) scale(0.98);
+}
+</style>

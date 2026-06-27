@@ -66,6 +66,7 @@ export function useApi() {
     getQuestion: (id) => request(`/api/questions/${id}`),
     createQuestion: (body) => request('/api/questions', { method: 'POST', body: JSON.stringify(body) }),
     updateQuestion: (id, body) => request(`/api/questions/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+    updateQuestionAiStatus: (id, status) => request(`/api/questions/${id}/ai-status`, { method: 'PUT', body: JSON.stringify({ status }) }),
     deleteQuestion: (id) => request(`/api/questions/${id}`, { method: 'DELETE' }),
     batchDelete: (body) => request('/api/questions/batch-delete', { method: 'POST', body: JSON.stringify(body) }),
     batchCategory: (body) => request('/api/questions/batch-category', { method: 'PUT', body: JSON.stringify(body) }),

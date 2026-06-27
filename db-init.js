@@ -42,7 +42,8 @@ db.exec(`
     category    TEXT DEFAULT '默认',
     images      TEXT,
     analysis    TEXT,
-    ai_answer   TEXT
+    ai_answer   TEXT,
+    ai_answer_status TEXT DEFAULT NULL
   );
 
   CREATE TABLE IF NOT EXISTS data_categories (
