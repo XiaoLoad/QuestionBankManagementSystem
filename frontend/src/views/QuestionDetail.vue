@@ -451,12 +451,12 @@ function answersMatch(aiAnswers, currentAnswers) {
             <div
               v-for="(opt, i) in renderOptions(question.options)"
               :key="i"
-              class="flex items-start gap-3 p-3 rounded-btn bg-notion-surface dark:bg-notion-surface-dark"
+              class="flex items-start gap-3 p-3 rounded-btn bg-notion-surface border border-notion-border"
             >
-              <span class="flex-shrink-0 w-6 h-6 rounded-full bg-notion-accent/10 dark:bg-notion-accent-dark/15 text-notion-accent dark:text-notion-accent-dark text-xs font-medium flex items-center justify-center">
+              <span class="flex-shrink-0 w-6 h-6 rounded-full bg-accent-10 text-accent text-xs font-medium flex items-center justify-center">
                 {{ String.fromCharCode(65 + i) }}
               </span>
-              <span class="text-sm text-notion-text dark:text-notion-text-dark">{{ opt }}</span>
+              <span class="text-sm text-notion-text">{{ opt }}</span>
             </div>
           </div>
         </div>

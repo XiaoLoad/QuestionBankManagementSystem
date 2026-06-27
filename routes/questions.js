@@ -4,8 +4,32 @@ const { validateQuestion } = require('../validate');
 module.exports = function (getDb, { md5, safeParse, sendError, localNow }, auth) {
   const router = express.Router();
 
-  // GET /api/questions (所有登录用户可访问)
-  router.get('/', (req, res) => {
+  // 获取用户分类限制
+  function getCategoryRestriction(db, userId, role) {
+    if (role === 'admin') return null;
+    const user = db.prepare('SELECT restriction_mode FROM users WHERE id = ?').get(userId);
+    const mode = user?.restriction_mode || 'allow';
+    const categories = db.prepare('SELECT category FROM user_category_restrictions WHERE user_id = ?')
+      .all(userId).map(r => r.category);
+    if (categories.length === 0) return null;
+    return { mode, categories };
+  }
+
+  // 应用分类限制到 WHERE 子句
+  function applyCategoryRestriction(where, params, restriction) {
+    if (!restriction) return where;
+    const placeholders = restriction.categories.map((_, i) => `@rcat${i}`).join(',');
+    if (restriction.mode === 'block') {
+      where += ` AND category NOT IN (${placeholders})`;
+    } else {
+      where += ` AND category IN (${placeholders})`;
+    }
+    restriction.categories.forEach((c, i) => { params[`rcat${i}`] = c; });
+    return where;
+  }
+
+  // GET /api/questions (所有登录用户可访问，普通用户受分类限制)
+  router.get('/', auth.authRequired, (req, res) => {
     try {
       const db = getDb();
       const { type, search, category, sort = 'desc', dateFrom, dateTo, page = 1, pageSize = 20 } = req.query;
@@ -13,8 +37,16 @@ module.exports = function (getDb, { md5, safeParse, sendError, localNow }, auth)
       const ps = Math.min(200, Math.max(1, parseInt(pageSize) || 20));
       const offset = (p - 1) * ps;
 
+      // 获取用户分类限制
+      const restriction = req.user ? getCategoryRestriction(db, req.user.id, req.user.role) : null;
+
       let where = 'WHERE deleted_at IS NULL';
       const params = {};
+
+      // 应用分类限制
+      if (restriction) {
+        where = applyCategoryRestriction(where, params, restriction);
+      }
 
       if (type && type !== '全部') { where += ' AND type = @type'; params.type = type; }
       if (category && category !== '全部') { where += ' AND category = @category'; params.category = category; }

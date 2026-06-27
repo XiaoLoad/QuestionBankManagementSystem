@@ -58,6 +58,23 @@
   }
 }
 
+/* 主题色透明度工具类 */
+.bg-accent {
+  background-color: var(--theme-accent);
+}
+.bg-accent-10 {
+  background-color: color-mix(in srgb, var(--theme-accent) 10%, transparent);
+}
+.bg-accent-15 {
+  background-color: color-mix(in srgb, var(--theme-accent) 15%, transparent);
+}
+.text-accent {
+  color: var(--theme-accent);
+}
+.border-accent {
+  border-color: var(--theme-accent);
+}
+
 /* Toast animation */
 @keyframes toast-in {
   from { transform: translateX(100%); opacity: 0; }

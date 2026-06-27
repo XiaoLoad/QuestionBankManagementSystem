@@ -531,7 +531,7 @@ async function handleAiAnalyze() {
 function getOptionBgClass(opt) {
   if (!answered.value) {
     return isOptionSelected(opt)
-      ? "bg-notion-accent/10 dark:bg-notion-accent-dark/15"
+      ? "bg-accent-10"
       : "bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-700/50";
   }
   const isCorrect = checkResult.value?.correctAnswers?.includes(opt);
@@ -544,7 +544,7 @@ function getOptionBgClass(opt) {
 
 function getOptionBarClass(opt) {
   if (!answered.value) {
-    return isOptionSelected(opt) ? "bg-notion-accent dark:bg-notion-accent-dark" : null;
+    return isOptionSelected(opt) ? "bg-accent" : null;
   }
   const isCorrect = checkResult.value?.correctAnswers?.includes(opt);
   const isUserSelected = isOptionSelected(opt);
@@ -630,7 +630,11 @@ function getBoolClass(val) {
                 <span
                   v-for="cat in selectedCategories"
                   :key="cat"
-                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded-badge text-xs bg-notion-accent/10 dark:bg-notion-accent-dark/15 text-notion-accent dark:text-notion-accent-dark"
+                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded-badge text-xs"
+                  :style="{
+                    backgroundColor: 'color-mix(in srgb, var(--theme-accent) 10%, transparent)',
+                    color: 'var(--theme-accent)'
+                  }"
                 >
                   {{ cat }}
                   <button
@@ -698,12 +702,18 @@ function getBoolClass(val) {
                       ? selectedTypes.splice(selectedTypes.indexOf(t), 1)
                       : selectedTypes.push(t)
                   "
-                  :class="[
-                    'px-2.5 py-1.5 sm:px-3 rounded-btn text-xs font-medium border transition-colors inline-flex items-center gap-1',
-                    selectedTypes.includes(t)
-                      ? 'border-notion-accent dark:border-notion-accent-dark bg-notion-accent/10 dark:bg-notion-accent-dark/15 text-notion-accent dark:text-notion-accent-dark'
-                      : 'border-notion-border dark:border-notion-border-dark text-notion-muted dark:text-notion-muted-dark hover:border-gray-300 dark:hover:border-gray-600',
-                  ]"
+                  class="px-2.5 py-1.5 sm:px-3 rounded-btn text-xs font-medium border transition-colors inline-flex items-center gap-1"
+                  :style="selectedTypes.includes(t)
+                    ? {
+                        borderColor: 'var(--theme-accent)',
+                        backgroundColor: 'color-mix(in srgb, var(--theme-accent) 10%, transparent)',
+                        color: 'var(--theme-accent)'
+                      }
+                    : {
+                        borderColor: 'var(--theme-border)',
+                        color: 'var(--theme-muted)'
+                      }"
+                  :class="!selectedTypes.includes(t) && 'hover:border-gray-300 dark:hover:border-gray-600'"
                 >
                   {{ t }}
                   <span
@@ -1030,7 +1040,7 @@ function getBoolClass(val) {
               </Transition>
               <span
                 class="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium"
-                :class="isOptionSelected(opt) ? 'bg-notion-accent text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400'"
+                :class="isOptionSelected(opt) ? 'bg-accent text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400'"
                 >{{ String.fromCharCode(65 + i) }}</span
               >
               <span class="break-words flex-1 pt-0.5">{{ opt }}</span>

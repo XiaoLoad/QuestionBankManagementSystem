@@ -116,12 +116,11 @@ function handleLogout() {
         v-for="item in navItems"
         :key="item.path"
         @click="navigate(item.path)"
-        :class="[
-          'w-full flex items-center gap-3 px-3 py-2.5 rounded-btn text-sm font-medium transition-colors duration-150',
-          isActive(item.path)
-            ? 'bg-notion-accent/10 text-notion-accent dark:bg-notion-accent-dark/15 dark:text-notion-accent-dark'
-            : 'text-notion-text dark:text-notion-text-dark hover:bg-gray-100 dark:hover:bg-gray-800'
-        ]"
+        class="w-full flex items-center gap-3 px-3 py-2.5 rounded-btn text-sm font-medium transition-colors duration-150"
+        :style="isActive(item.path)
+          ? { backgroundColor: 'color-mix(in srgb, var(--theme-accent) 10%, transparent)', color: 'var(--theme-accent)' }
+          : { color: 'var(--theme-text)' }"
+        :class="!isActive(item.path) && 'hover:bg-gray-100 dark:hover:bg-gray-800'"
       >
         <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" :d="item.icon"/>
@@ -140,8 +139,9 @@ function handleLogout() {
     <div class="px-3 py-4 border-t border-notion-border dark:border-notion-border-dark space-y-2">
       <!-- User Info -->
       <div class="flex items-center gap-3 px-3 py-2">
-        <div class="w-8 h-8 rounded-full bg-accent/10 dark:bg-accent-dark/10 flex items-center justify-center">
-          <span class="text-sm font-medium text-accent dark:text-accent-dark">
+        <div class="w-8 h-8 rounded-full flex items-center justify-center"
+             :style="{ backgroundColor: 'color-mix(in srgb, var(--theme-accent) 10%, transparent)' }">
+          <span class="text-sm font-medium" :style="{ color: 'var(--theme-accent)' }">
             {{ authStore.displayName ? authStore.displayName.charAt(0).toUpperCase() : 'U' }}
           </span>
         </div>
