@@ -334,7 +334,9 @@ module.exports = function (getDb, { md5, sendError, localNow, extractImageUrls, 
 
       if (!response.ok) {
         const text = await response.text().catch(() => '');
-        return res.status(response.status).json({ error: `AI 请求失败: HTTP ${response.status}`, detail: text.slice(0, 500) });
+        // 不要直接返回 AI 服务商的 401 状态码，避免前端误认为登录过期
+        const status = response.status === 401 ? 502 : response.status;
+        return res.status(status).json({ error: `AI 请求失败: HTTP ${response.status}，请检查 API Key 是否正确`, detail: text.slice(0, 500) });
       }
 
       const data = await response.json();
@@ -496,6 +498,19 @@ module.exports = function (getDb, { md5, sendError, localNow, extractImageUrls, 
         } catch (e) {
           console.error('[ai] 缓存解析失败:', e.message);
         }
+      }
+
+      // 记录 AI 使用日志
+      if (userId) {
+        try {
+          db.prepare('INSERT INTO user_activity_logs (user_id, action, detail, created_at) VALUES (?, ?, ?, ?)')
+            .run(userId, 'ai_analyze', JSON.stringify({
+              type: type,
+              content: content.substring(0, 100),
+              provider: provider.name,
+              model: provider.model,
+            }), localNow());
+        } catch {}
       }
 
       res.json({ analysis, answer, model: provider.model, provider: provider.name, rawResponse, cached: false });
