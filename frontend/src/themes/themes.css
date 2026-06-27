@@ -1,0 +1,119 @@
+/**
+ * 主题 CSS 变量定义
+ * 每套主题都有亮色和暗色两个版本
+ */
+
+/* 默认主题 - 经典紫 (Notion) */
+:root,
+.theme-purple {
+  --theme-bg: #ffffff;
+  --theme-surface: #ffffff;
+  --theme-text: #37352f;
+  --theme-border: #e5e3df;
+  --theme-accent: #5645d4;
+  --theme-muted: #9b9a97;
+}
+
+.dark.theme-purple {
+  --theme-bg: #191919;
+  --theme-surface: #202020;
+  --theme-text: #e8e6e3;
+  --theme-border: #333333;
+  --theme-accent: #7c6ef0;
+  --theme-muted: #6b6b6b;
+}
+
+/* 护眼绿 */
+.theme-green {
+  --theme-bg: #f8fdf8;
+  --theme-surface: #e8f5e9;
+  --theme-text: #2e3b2e;
+  --theme-border: #c8e6c9;
+  --theme-accent: #4caf50;
+  --theme-muted: #7cb680;
+}
+
+.dark.theme-green {
+  --theme-bg: #1a2419;
+  --theme-surface: #223322;
+  --theme-text: #e0ece0;
+  --theme-border: #3a5a3a;
+  --theme-accent: #66bb6a;
+  --theme-muted: #5a7a5a;
+}
+
+/* 温暖橙 */
+.theme-orange {
+  --theme-bg: #fdf8f4;
+  --theme-surface: #f5ebe0;
+  --theme-text: #3d2e1e;
+  --theme-border: #e6d5c3;
+  --theme-accent: #e67e22;
+  --theme-muted: #a89080;
+}
+
+.dark.theme-orange {
+  --theme-bg: #241c14;
+  --theme-surface: #2d2318;
+  --theme-text: #ece0d4;
+  --theme-border: #5a4a3a;
+  --theme-accent: #f0a050;
+  --theme-muted: #8a7a6a;
+}
+
+/* 专业蓝 */
+.theme-blue {
+  --theme-bg: #f8fafd;
+  --theme-surface: #e3ecf6;
+  --theme-text: #1e2d3d;
+  --theme-border: #c3d5e6;
+  --theme-accent: #2196f3;
+  --theme-muted: #7a8ea0;
+}
+
+.dark.theme-blue {
+  --theme-bg: #141c24;
+  --theme-surface: #1a2634;
+  --theme-text: #dce8f0;
+  --theme-border: #3a5068;
+  --theme-accent: #42a5f5;
+  --theme-muted: #5a7a90;
+}
+
+/* 优雅粉 */
+.theme-pink {
+  --theme-bg: #fdf8fa;
+  --theme-surface: #fce4ec;
+  --theme-text: #3d2e35;
+  --theme-border: #f8bbd0;
+  --theme-accent: #e91e63;
+  --theme-muted: #a07a8a;
+}
+
+.dark.theme-pink {
+  --theme-bg: #24141c;
+  --theme-surface: #2d1a24;
+  --theme-text: #ece0e8;
+  --theme-border: #5a3a4a;
+  --theme-accent: #f06292;
+  --theme-muted: #8a5a70;
+}
+
+/* 深靛蓝 */
+.theme-indigo {
+  --theme-bg: #f5f7fa;
+  --theme-surface: #e8ecf4;
+  --theme-text: #1a2332;
+  --theme-border: #c5cfe0;
+  --theme-accent: #3f51b5;
+  --theme-muted: #6b7a90;
+}
+
+.dark.theme-indigo {
+  --theme-bg: #141824;
+  --theme-surface: #1a2030;
+  --theme-text: #dce0ec;
+  --theme-border: #3a4560;
+  --theme-accent: #7986cb;
+  --theme-muted: #5a6a80;
+}

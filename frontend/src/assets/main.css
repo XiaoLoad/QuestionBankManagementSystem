@@ -1,3 +1,4 @@
+@import '../themes/themes.css';
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -5,9 +6,6 @@
 @layer base {
   body {
     @apply bg-notion-bg text-notion-text font-inter antialiased;
-  }
-  .dark body {
-    @apply bg-notion-bg-dark text-notion-text-dark;
   }
 }
 
@@ -17,16 +15,10 @@
            hover:opacity-90 active:scale-[0.98] transition-all duration-150 inline-flex items-center gap-2
            disabled:opacity-50 disabled:cursor-not-allowed;
   }
-  .dark .btn-primary {
-    @apply bg-notion-accent-dark;
-  }
   .btn-secondary {
     @apply px-4 py-2 bg-notion-surface text-notion-text rounded-btn font-medium text-sm
-           border border-notion-border hover:bg-gray-100 active:scale-[0.98] transition-all duration-150
+           border border-notion-border hover:opacity-80 active:scale-[0.98] transition-all duration-150
            inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed;
-  }
-  .dark .btn-secondary {
-    @apply bg-notion-surface-dark text-notion-text-dark border-notion-border-dark hover:bg-gray-800;
   }
   .btn-danger {
     @apply px-4 py-2 bg-red-500 text-white rounded-btn font-medium text-sm
@@ -34,45 +26,35 @@
            disabled:opacity-50 disabled:cursor-not-allowed;
   }
   .card {
-    @apply bg-white rounded-card border border-notion-border p-6;
-  }
-  .dark .card {
-    @apply bg-notion-bg-dark border-notion-border-dark;
+    @apply bg-notion-surface rounded-card border border-notion-border p-6;
   }
   .input-field {
     @apply w-full px-3 py-2 text-sm border border-notion-border rounded-btn
-           bg-white text-notion-text placeholder-notion-muted
-           focus:outline-none focus:ring-2 focus:ring-notion-accent/30 focus:border-notion-accent
+           bg-notion-bg text-notion-text placeholder-notion-muted
+           focus:outline-none focus:border-notion-accent
            transition-colors duration-150;
-  }
-  .dark .input-field {
-    @apply bg-notion-surface-dark border-notion-border-dark text-notion-text-dark
-           placeholder-notion-muted-dark focus:ring-notion-accent-dark/30 focus:border-notion-accent-dark;
+    &:focus {
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--theme-accent) 30%, transparent);
+    }
   }
   .select-field {
     @apply px-3 py-2 text-sm border border-notion-border rounded-btn
-           bg-white text-notion-text
-           focus:outline-none focus:ring-2 focus:ring-notion-accent/30 focus:border-notion-accent
+           bg-notion-bg text-notion-text
+           focus:outline-none focus:border-notion-accent
            transition-colors duration-150;
-  }
-  .dark .select-field {
-    @apply bg-notion-surface-dark border-notion-border-dark text-notion-text-dark
-           focus:ring-notion-accent-dark/30 focus:border-notion-accent-dark;
+    &:focus {
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--theme-accent) 30%, transparent);
+    }
   }
   .badge {
     @apply inline-flex items-center px-2 py-0.5 rounded-badge text-xs font-medium;
   }
   .badge-type {
-    @apply bg-notion-accent/10 text-notion-accent;
-  }
-  .dark .badge-type {
-    @apply bg-notion-accent-dark/15 text-notion-accent-dark;
+    background-color: color-mix(in srgb, var(--theme-accent) 10%, transparent);
+    color: var(--theme-accent);
   }
   .badge-category {
-    @apply bg-gray-100 text-gray-600;
-  }
-  .dark .badge-category {
-    @apply bg-gray-800 text-gray-400;
+    @apply bg-notion-surface text-notion-muted;
   }
 }
 

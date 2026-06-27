@@ -5,6 +5,7 @@ import { useThemeStore } from '@/stores/theme'
 import { useAuthStore } from '@/stores/auth'
 import { useApi } from '@/composables/useApi'
 import { useTrashStore } from '@/stores/trash'
+import { getAllThemes } from '@/themes'
 
 defineProps({
   open: Boolean
@@ -17,6 +18,10 @@ const theme = useThemeStore()
 const authStore = useAuthStore()
 const api = useApi()
 const trashStore = useTrashStore()
+
+// 主题色选择
+const themes = getAllThemes()
+const showThemePicker = ref(false)
 
 // 站点名称
 const siteName = ref('题库管理')
@@ -164,6 +169,53 @@ function handleLogout() {
         {{ theme.isDark ? '切换亮色' : '切换暗色' }}
       </button>
 
+      <!-- Theme Color Picker -->
+      <div class="theme-picker-wrapper">
+        <button
+          @click="showThemePicker = !showThemePicker"
+          class="w-full flex items-center gap-3 px-3 py-2.5 rounded-btn text-sm font-medium text-notion-text dark:text-notion-text-dark hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+        >
+          <div
+            class="w-5 h-5 rounded-full"
+            :style="{ backgroundColor: themes.find(t => t.id === theme.themeColor)?.preview || '#5645d4' }"
+          />
+          <span class="flex-1 text-left">主题颜色</span>
+          <svg
+            class="w-4 h-4 transition-transform duration-200"
+            :class="showThemePicker ? 'rotate-180' : ''"
+            fill="none" stroke="currentColor" viewBox="0 0 24 24"
+          >
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+          </svg>
+        </button>
+
+        <!-- Theme Color Grid -->
+        <div
+          class="theme-picker-grid"
+          :class="{ 'expanded': showThemePicker }"
+        >
+          <div class="mx-3 mt-2 p-3 bg-notion-surface rounded-card border border-notion-border">
+            <div class="grid grid-cols-3 gap-2">
+              <button
+                v-for="t in themes"
+                :key="t.id"
+                @click="theme.setThemeColor(t.id)"
+                class="flex flex-col items-center gap-1 p-1.5 rounded-btn transition-all duration-150 hover:scale-105"
+                :class="theme.themeColor === t.id
+                  ? 'bg-notion-accent/10 ring-2 ring-notion-accent'
+                  : 'hover:bg-notion-bg'"
+              >
+                <div
+                  class="w-6 h-6 rounded-full shadow-sm"
+                  :style="{ backgroundColor: t.preview }"
+                />
+                <span class="text-[10px] text-notion-muted">{{ t.name }}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Logout -->
       <button
         @click="handleLogout"
@@ -177,3 +229,17 @@ function handleLogout() {
     </div>
   </aside>
 </template>
+
+<style scoped>
+.theme-picker-grid {
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: max-height 0.3s ease-out, opacity 0.2s ease-out;
+}
+
+.theme-picker-grid.expanded {
+  max-height: 200px;
+  opacity: 1;
+}
+</style>
