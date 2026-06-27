@@ -423,7 +423,8 @@ function cancelModelPicker() {
         :key="p.id"
         class="card py-3"
       >
-        <div class="flex items-center gap-3">
+        <!-- 第一行：信息区 -->
+        <div class="flex items-start gap-3 mb-3">
           <!-- Icon -->
           <div class="w-8 h-8 rounded flex items-center justify-center flex-shrink-0"
             :class="p.is_default ? 'bg-notion-accent/10 dark:bg-notion-accent-dark/15' : 'bg-gray-100 dark:bg-gray-700'"
@@ -437,47 +438,73 @@ function cancelModelPicker() {
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-1.5 flex-wrap">
               <span class="text-sm font-semibold text-notion-text dark:text-notion-text-dark">{{ p.name }}</span>
-              <span v-if="p.model" class="text-xs text-notion-muted dark:text-notion-muted-dark font-mono">{{ p.model }}</span>
               <span v-if="p.is_default" class="badge bg-notion-accent/10 text-notion-accent dark:bg-notion-accent-dark/15 dark:text-notion-accent-dark text-[10px] flex-shrink-0">默认</span>
               <span v-if="!p.enabled" class="badge bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400 text-[10px] flex-shrink-0">停用</span>
             </div>
-            <div class="flex items-center gap-2 mt-0.5">
-              <span class="text-[11px] text-notion-muted dark:text-notion-muted-dark font-mono truncate">{{ p.base_url }}</span>
+            <div v-if="p.model" class="text-xs text-notion-muted dark:text-notion-muted-dark font-mono mt-0.5">
+              模型：{{ p.model }}
             </div>
-            <div class="flex items-center gap-2 mt-0.5">
-              <span class="text-[11px] text-notion-muted dark:text-notion-muted-dark font-mono">Key: {{ p.api_key_masked }}</span>
+            <div class="text-[11px] text-notion-muted dark:text-notion-muted-dark font-mono mt-0.5 truncate">
+              {{ p.base_url }}
+            </div>
+            <div class="text-[11px] text-notion-muted dark:text-notion-muted-dark font-mono mt-0.5">
+              Key: {{ p.api_key_masked }}
             </div>
           </div>
 
-          <!-- Actions -->
-          <div class="flex items-center gap-1 flex-shrink-0">
-            <!-- 启用/停用开关 -->
-            <button
-              @click="toggleEnabled(p)"
+          <!-- 开关 -->
+          <button
+            @click="toggleEnabled(p)"
+            :class="[
+              'relative w-9 h-5 rounded-full transition-colors flex-shrink-0 mt-0.5',
+              p.enabled ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'
+            ]"
+            :title="p.enabled ? '点击停用' : '点击启用'"
+          >
+            <span
               :class="[
-                'relative w-9 h-5 rounded-full transition-colors',
-                p.enabled ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'
+                'absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform',
+                p.enabled ? 'translate-x-4' : 'translate-x-0'
               ]"
-              :title="p.enabled ? '点击停用' : '点击启用'"
-            >
-              <span
-                :class="[
-                  'absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform',
-                  p.enabled ? 'translate-x-4' : 'translate-x-0'
-                ]"
-              />
-            </button>
-            <button @click="openEditForm(p)" class="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-notion-muted dark:text-notion-muted-dark transition-colors" title="编辑">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-              </svg>
-            </button>
-            <button @click="deleteProvider(p)" class="p-1.5 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-notion-muted dark:text-notion-muted-dark hover:text-red-500 transition-colors" title="删除">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-              </svg>
-            </button>
-          </div>
+            />
+          </button>
+        </div>
+
+        <!-- 第二行：操作区 -->
+        <div class="flex items-center gap-2 pt-2 border-t border-gray-100 dark:border-gray-700">
+          <button
+            @click="testConnection(p)"
+            :disabled="testingId === p.id"
+            class="text-xs px-2.5 py-1.5 rounded bg-gray-100 dark:bg-gray-700 text-notion-muted dark:text-notion-muted-dark hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+          >
+            <svg v-if="testingId === p.id" class="w-3 h-3 animate-spin inline mr-1" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+            </svg>
+            {{ testingId === p.id ? '测试中...' : '测试连通性' }}
+          </button>
+          <button
+            @click="fetchModels(p)"
+            :disabled="loadingModelsId === p.id"
+            class="text-xs px-2.5 py-1.5 rounded bg-gray-100 dark:bg-gray-700 text-notion-muted dark:text-notion-muted-dark hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+          >
+            <svg v-if="loadingModelsId === p.id" class="w-3 h-3 animate-spin inline mr-1" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+            </svg>
+            {{ loadingModelsId === p.id ? '获取中...' : '获取模型列表' }}
+          </button>
+          <div class="flex-1"></div>
+          <button @click="openEditForm(p)" class="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-notion-muted dark:text-notion-muted-dark transition-colors" title="编辑">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+            </svg>
+          </button>
+          <button @click="deleteProvider(p)" class="p-1.5 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-notion-muted dark:text-notion-muted-dark hover:text-red-500 transition-colors" title="删除">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+            </svg>
+          </button>
         </div>
       </div>
     </div>
