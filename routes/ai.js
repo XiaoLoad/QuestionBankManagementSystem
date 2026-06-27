@@ -58,7 +58,7 @@ module.exports = function (getDb, { md5, sendError, localNow, extractImageUrls, 
       const existing = db.prepare('SELECT * FROM ai_providers WHERE id = ?').get(id);
       if (!existing) return res.status(404).json({ error: '服务商不存在' });
 
-      const { name, base_url, api_key, model, is_default } = req.body;
+      const { name, base_url, api_key, model, is_default, enabled } = req.body;
       const now = localNow();
 
       if (is_default) {
@@ -66,7 +66,7 @@ module.exports = function (getDb, { md5, sendError, localNow, extractImageUrls, 
       }
 
       db.prepare(
-        `UPDATE ai_providers SET name=@name, base_url=@base_url, api_key=@api_key, model=@model, is_default=@is_default, updated_at=@updated_at WHERE id=@id`
+        `UPDATE ai_providers SET name=@name, base_url=@base_url, api_key=@api_key, model=@model, is_default=@is_default, enabled=@enabled, updated_at=@updated_at WHERE id=@id`
       ).run({
         id,
         name: name !== undefined ? name.trim() : existing.name,
@@ -74,6 +74,7 @@ module.exports = function (getDb, { md5, sendError, localNow, extractImageUrls, 
         api_key: api_key !== undefined ? api_key.trim() : existing.api_key,
         model: model !== undefined ? model : existing.model,
         is_default: is_default !== undefined ? (is_default ? 1 : 0) : existing.is_default,
+        enabled: enabled !== undefined ? (enabled ? 1 : 0) : existing.enabled,
         updated_at: now,
       });
       res.json({ message: '更新成功' });
@@ -172,13 +173,54 @@ module.exports = function (getDb, { md5, sendError, localNow, extractImageUrls, 
         } catch {}
       }
 
+      // AI 服务商查找优先级（只使用已启用的服务商）：
+      // 管理员：直接使用全局 ai_providers
+      // 普通用户：
+      //   1. 用户自定义默认
+      //   2. 用户自定义第一个
+      //   3. 管理员默认（需 can_use_admin_ai = 1）
+      //   4. 管理员第一个（需 can_use_admin_ai = 1）
       let provider;
+      const userId = req.user?.id;
+      const isAdmin = req.user?.role === 'admin';
+
       if (providerId) {
-        provider = db.prepare('SELECT * FROM ai_providers WHERE id = ?').get(providerId);
+        // 指定服务商：管理员查全局，普通用户先查自己的再查全局
+        if (isAdmin) {
+          provider = db.prepare('SELECT * FROM ai_providers WHERE id = ? AND enabled = 1').get(providerId);
+        } else {
+          provider = db.prepare('SELECT * FROM user_ai_providers WHERE id = ? AND user_id = ? AND enabled = 1').get(providerId, userId);
+          if (!provider) {
+            // 检查是否授权使用管理员服务商
+            const user = db.prepare('SELECT can_use_admin_ai FROM users WHERE id = ?').get(userId);
+            if (user?.can_use_admin_ai) {
+              provider = db.prepare('SELECT * FROM ai_providers WHERE id = ? AND enabled = 1').get(providerId);
+            }
+          }
+        }
       } else {
-        provider = db.prepare('SELECT * FROM ai_providers WHERE is_default = 1').get();
-        if (!provider) provider = db.prepare('SELECT * FROM ai_providers ORDER BY id ASC LIMIT 1').get();
+        // 管理员：直接查全局服务商
+        if (isAdmin) {
+          provider = db.prepare('SELECT * FROM ai_providers WHERE is_default = 1 AND enabled = 1').get();
+          if (!provider) provider = db.prepare('SELECT * FROM ai_providers WHERE enabled = 1 ORDER BY id ASC LIMIT 1').get();
+        } else {
+          // 普通用户：先查自己的
+          provider = db.prepare('SELECT * FROM user_ai_providers WHERE user_id = ? AND is_default = 1 AND enabled = 1').get(userId);
+          if (!provider) {
+            provider = db.prepare('SELECT * FROM user_ai_providers WHERE user_id = ? AND enabled = 1 ORDER BY id ASC LIMIT 1').get(userId);
+          }
+
+          // 再查管理员的（需授权）
+          if (!provider) {
+            const user = db.prepare('SELECT can_use_admin_ai FROM users WHERE id = ?').get(userId);
+            if (user?.can_use_admin_ai) {
+              provider = db.prepare('SELECT * FROM ai_providers WHERE is_default = 1 AND enabled = 1').get();
+              if (!provider) provider = db.prepare('SELECT * FROM ai_providers WHERE enabled = 1 ORDER BY id ASC LIMIT 1').get();
+            }
+          }
+        }
       }
+
       if (!provider) return res.status(400).json({ error: '请先配置 AI 服务商' });
       if (!provider.model) return res.status(400).json({ error: '请先为该服务商选择模型' });
 

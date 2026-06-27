@@ -346,6 +346,28 @@
                 </template>
               </p>
             </div>
+            <!-- 允许使用管理员 AI -->
+            <div class="flex items-center justify-between py-3 border-t border-notion-border dark:border-notion-border-dark">
+              <div>
+                <p class="text-sm font-medium text-notion-text dark:text-notion-text-dark">允许使用管理员 AI</p>
+                <p class="text-xs text-notion-muted dark:text-notion-muted-dark mt-0.5">开启后用户可使用管理员配置的 AI 模型</p>
+              </div>
+              <button
+                type="button"
+                @click="editForm.canUseAdminAi = !editForm.canUseAdminAi"
+                :class="[
+                  'relative w-10 h-5 rounded-full transition-colors flex-shrink-0',
+                  editForm.canUseAdminAi ? 'bg-notion-accent dark:bg-notion-accent-dark' : 'bg-gray-200 dark:bg-gray-700'
+                ]"
+              >
+                <span
+                  :class="[
+                    'absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform',
+                    editForm.canUseAdminAi ? 'translate-x-5' : 'translate-x-0'
+                  ]"
+                />
+              </button>
+            </div>
             <div v-if="editError" class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
               <p class="text-sm text-red-600 dark:text-red-400">{{ editError }}</p>
             </div>
@@ -435,7 +457,8 @@ const editForm = ref({
   username: '',
   displayName: '',
   role: 'user',
-  restrictedCategories: []
+  restrictedCategories: [],
+  canUseAdminAi: false
 })
 const editRestrictionMode = ref('all') // 'all' | 'custom'
 const restrictionPolicy = ref('allow') // 'allow' | 'block'
@@ -542,7 +565,8 @@ function editUser(user) {
     username: user.username,
     displayName: user.display_name || '',
     role: user.role,
-    restrictedCategories: [...restricted]
+    restrictedCategories: [...restricted],
+    canUseAdminAi: !!user.can_use_admin_ai
   }
   editRestrictionMode.value = restricted.length > 0 ? 'custom' : 'all'
   restrictionPolicy.value = user.restriction_mode || 'allow'
@@ -564,7 +588,8 @@ async function handleEditUser() {
         displayName: editForm.value.displayName,
         role: editForm.value.role,
         restrictedCategories: editRestrictionMode.value === 'custom' ? editForm.value.restrictedCategories : [],
-        restrictionMode: editRestrictionMode.value === 'custom' ? restrictionPolicy.value : 'allow'
+        restrictionMode: editRestrictionMode.value === 'custom' ? restrictionPolicy.value : 'allow',
+        canUseAdminAi: editForm.value.canUseAdminAi
       })
     })
 

@@ -85,6 +85,12 @@ function initDatabase(db) {
   // Migration: add ai_answer column (AI 答案缓存)
   try { db.exec(`ALTER TABLE data_questions ADD COLUMN ai_answer TEXT`); } catch {}
 
+  // Migration: add enabled column to ai_providers
+  try { db.exec(`ALTER TABLE ai_providers ADD COLUMN enabled INTEGER DEFAULT 1`); } catch {}
+
+  // Migration: add enabled column to user_ai_providers
+  try { db.exec(`ALTER TABLE user_ai_providers ADD COLUMN enabled INTEGER DEFAULT 1`); } catch {}
+
   // Ensure data_categories table exists WITH score column
   try {
     db.exec(`CREATE TABLE IF NOT EXISTS data_categories (
@@ -199,6 +205,27 @@ function initDatabase(db) {
   // Add login lockout columns to users if not exists
   try { db.exec(`ALTER TABLE users ADD COLUMN failed_attempts INTEGER DEFAULT 0`); } catch {}
   try { db.exec(`ALTER TABLE users ADD COLUMN locked_until DATETIME`); } catch {}
+
+  // Add can_use_admin_ai column to users if not exists
+  try { db.exec(`ALTER TABLE users ADD COLUMN can_use_admin_ai INTEGER DEFAULT 0`); } catch {}
+
+  // Ensure user_ai_providers table exists
+  try {
+    db.exec(`CREATE TABLE IF NOT EXISTS user_ai_providers (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id     INTEGER NOT NULL,
+      name        TEXT NOT NULL,
+      base_url    TEXT NOT NULL,
+      api_key     TEXT NOT NULL,
+      model       TEXT DEFAULT '',
+      is_default  INTEGER DEFAULT 0,
+      created_at  DATETIME,
+      updated_at  DATETIME,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )`);
+  } catch {}
+
+  try { db.exec(`CREATE INDEX IF NOT EXISTS idx_user_ai_providers_user ON user_ai_providers(user_id)`); } catch {}
 
   // Ensure site_settings table exists
   try {
@@ -334,6 +361,7 @@ const databaseRouter = require('./routes/database')(getDb, setDb, helpers, {
   config, DEFAULT_DB_PATH, UPLOADS_DIR, TMP_DIR, isSQLiteFile, openDatabase, getDbStats, loadConfig, saveConfig,
 }, auth);
 const quizRouter = require('./routes/quiz')(getDb, helpers, auth);
+const userAiRouter = require('./routes/user-ai')(getDb, helpers, auth);
 
 app.use('/api/questions', auth.authRequired, questionsRouter);
 app.use('/api/trash', auth.authRequired, trashRouter);
@@ -342,6 +370,7 @@ app.use('/api/categories', auth.authRequired, categoriesRouter);
 app.use('/api/backup', auth.adminRequired, backupRouter);
 app.use('/api/ai', auth.authRequired, aiRouter);
 app.use('/api/ai/analyze', auth.authRequired);
+app.use('/api/user-ai', userAiRouter);
 app.use('/api/duplicates', auth.adminRequired, duplicatesRouter);
 app.use('/api/database', auth.adminRequired, databaseRouter);
 app.use('/api/quiz', auth.authRequired, quizRouter);

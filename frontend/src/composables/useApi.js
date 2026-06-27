@@ -187,6 +187,15 @@ export function useApi() {
       return request('/api/ai/analyze', { method: 'POST', body: JSON.stringify({ ...body, timeout }) })
     },
 
+    // User AI Providers
+    getUserAiProviders: () => request('/api/user-ai/providers'),
+    createUserAiProvider: (body) => request('/api/user-ai/providers', { method: 'POST', body: JSON.stringify(body) }),
+    updateUserAiProvider: (id, body) => request(`/api/user-ai/providers/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+    deleteUserAiProvider: (id) => request(`/api/user-ai/providers/${id}`, { method: 'DELETE' }),
+    testUserAiProvider: (id) => request(`/api/user-ai/providers/${id}/test`, { method: 'POST' }),
+    getUserAiModels: (id) => request(`/api/user-ai/providers/${id}/models`),
+    getUserAiAdminConfig: () => request('/api/user-ai/admin-config'),
+
     // Duplicates
     getDuplicates: () => request('/api/duplicates'),
     resolveDuplicates: (body) => request('/api/duplicates/resolve', { method: 'POST', body: JSON.stringify(body) }),

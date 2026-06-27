@@ -54,7 +54,7 @@ const routes = [
     path: '/ai-settings',
     name: 'AiSettings',
     component: () => import('@/views/AiSettings.vue'),
-    meta: { title: 'AI 设置', requiresAdmin: true }
+    meta: { title: 'AI 设置' }
   },
   {
     path: '/external',

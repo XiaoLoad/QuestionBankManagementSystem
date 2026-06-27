@@ -1,15 +1,18 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { useApi } from '@/composables/useApi'
+import { useAuthStore } from '@/stores/auth'
 import { useToastStore } from '@/stores/toast'
 import { useConfirmStore } from '@/stores/confirm'
 
 defineOptions({ name: 'AiSettings' })
 
 const api = useApi()
+const authStore = useAuthStore()
 const toast = useToastStore()
 const confirm = useConfirmStore()
 
+const isAdmin = ref(authStore.isAdmin)
 const providers = ref([])
 const presets = ref([])
 const loading = ref(true)
@@ -18,6 +21,9 @@ const editingProvider = ref(null)
 const showPresetMenu = ref(false)
 const testingId = ref(null)
 const loadingModelsId = ref(null)
+
+// 用户被授权使用管理员 AI 时的配置信息
+const adminConfig = ref({ authorized: false, providers: [] })
 
 // AI timeout setting (seconds)
 const aiTimeout = ref(parseInt(localStorage.getItem('ai_timeout') || '120'))
@@ -38,12 +44,24 @@ const form = reactive({
 })
 
 onMounted(async () => {
-  await Promise.all([loadProviders(), loadPresets()])
+  if (isAdmin.value) {
+    await Promise.all([loadProviders(), loadPresets()])
+  } else {
+    await Promise.all([loadUserProviders(), loadPresets(), loadAdminConfig()])
+  }
   loading.value = false
 })
 
 async function loadProviders() {
   try { providers.value = await api.getAiProviders() } catch {}
+}
+
+async function loadUserProviders() {
+  try { providers.value = await api.getUserAiProviders() } catch {}
+}
+
+async function loadAdminConfig() {
+  try { adminConfig.value = await api.getUserAiAdminConfig() } catch {}
 }
 
 async function loadPresets() {
@@ -81,15 +99,22 @@ async function submitForm() {
     return
   }
   try {
-    if (editingProvider.value) {
-      await api.updateAiProvider(editingProvider.value.id, { ...form })
-      toast.success('更新成功')
+    if (isAdmin.value) {
+      if (editingProvider.value) {
+        await api.updateAiProvider(editingProvider.value.id, { ...form })
+      } else {
+        await api.createAiProvider({ ...form })
+      }
     } else {
-      await api.createAiProvider({ ...form })
-      toast.success('添加成功')
+      if (editingProvider.value) {
+        await api.updateUserAiProvider(editingProvider.value.id, { ...form })
+      } else {
+        await api.createUserAiProvider({ ...form })
+      }
     }
+    toast.success(editingProvider.value ? '更新成功' : '添加成功')
     closeForm()
-    loadProviders()
+    isAdmin.value ? loadProviders() : loadUserProviders()
   } catch {}
 }
 
@@ -102,24 +127,34 @@ async function deleteProvider(p) {
   })
   if (!ok) return
   try {
-    await api.deleteAiProvider(p.id)
+    if (isAdmin.value) {
+      await api.deleteAiProvider(p.id)
+    } else {
+      await api.deleteUserAiProvider(p.id)
+    }
     toast.success('已删除')
-    loadProviders()
+    isAdmin.value ? loadProviders() : loadUserProviders()
   } catch {}
 }
 
 async function setDefault(p) {
   try {
-    await api.updateAiProvider(p.id, { is_default: true })
+    if (isAdmin.value) {
+      await api.updateAiProvider(p.id, { is_default: true })
+    } else {
+      await api.updateUserAiProvider(p.id, { is_default: true })
+    }
     toast.success(`已将「${p.name}」设为默认`)
-    loadProviders()
+    isAdmin.value ? loadProviders() : loadUserProviders()
   } catch {}
 }
 
 async function testConnection(p) {
   testingId.value = p.id
   try {
-    const result = await api.testAiProvider(p.id)
+    const result = isAdmin.value
+      ? await api.testAiProvider(p.id)
+      : await api.testUserAiProvider(p.id)
     if (result.ok) {
       toast.success(`${p.name} 连接成功`)
     } else {
@@ -133,14 +168,20 @@ async function testConnection(p) {
 async function fetchModels(p) {
   loadingModelsId.value = p.id
   try {
-    const result = await api.getAiModels(p.id)
+    const result = isAdmin.value
+      ? await api.getAiModels(p.id)
+      : await api.getUserAiModels(p.id)
     if (result.models && result.models.length > 0) {
       // Show model selection dialog
       const model = await showModelPicker(result.models, p.model)
       if (model !== null) {
-        await api.updateAiProvider(p.id, { model })
+        if (isAdmin.value) {
+          await api.updateAiProvider(p.id, { model })
+        } else {
+          await api.updateUserAiProvider(p.id, { model })
+        }
         toast.success(`模型已设为 ${model}`)
-        loadProviders()
+        isAdmin.value ? loadProviders() : loadUserProviders()
       }
     } else {
       toast.info('未获取到可用模型')
@@ -148,6 +189,19 @@ async function fetchModels(p) {
   } catch {} finally {
     loadingModelsId.value = null
   }
+}
+
+async function toggleEnabled(p) {
+  try {
+    const newEnabled = !p.enabled
+    if (isAdmin.value) {
+      await api.updateAiProvider(p.id, { enabled: newEnabled })
+    } else {
+      await api.updateUserAiProvider(p.id, { enabled: newEnabled })
+    }
+    toast.success(newEnabled ? `${p.name} 已启用` : `${p.name} 已停用`)
+    isAdmin.value ? loadProviders() : loadUserProviders()
+  } catch {}
 }
 
 // Model picker state
@@ -182,7 +236,9 @@ function cancelModelPicker() {
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-6 sm:mb-8">
       <div>
         <h1 class="text-xl sm:text-2xl font-bold text-notion-text dark:text-notion-text-dark">AI 设置</h1>
-        <p class="text-xs sm:text-sm text-notion-muted dark:text-notion-muted-dark mt-1">管理 AI 服务商，用于题目答案校验</p>
+        <p class="text-xs sm:text-sm text-notion-muted dark:text-notion-muted-dark mt-1">
+          {{ isAdmin ? '管理 AI 服务商，用于题目答案校验' : '配置你的 AI 服务商，用于题目答案校验' }}
+        </p>
       </div>
       <div class="flex items-center gap-2">
         <div class="relative">
@@ -213,6 +269,62 @@ function cancelModelPicker() {
               {{ preset.name }}
             </button>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 管理员 AI 配置展示（仅普通用户且被授权时显示） -->
+    <div v-if="!isAdmin && adminConfig.authorized" class="card mb-6 border-l-4 border-blue-400">
+      <div class="flex items-center gap-3 mb-3">
+        <div class="w-8 h-8 rounded-btn flex items-center justify-center bg-blue-50 dark:bg-blue-900/20">
+          <svg class="w-4 h-4 text-blue-500 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+        </div>
+        <div>
+          <h3 class="text-sm font-semibold text-notion-text dark:text-notion-text-dark">管理员 AI 配置（已授权使用）</h3>
+          <p class="text-xs text-notion-muted dark:text-notion-muted-dark">您已被授权使用管理员的 AI 配置，如需使用自己的配置请在下方添加</p>
+        </div>
+      </div>
+      <div v-if="adminConfig.providers.length > 0" class="space-y-2">
+        <div
+          v-for="p in adminConfig.providers"
+          :key="p.name"
+          class="flex items-center gap-3 p-2 rounded bg-gray-50 dark:bg-gray-800/50"
+        >
+          <div class="flex-1">
+            <div class="flex items-center gap-2">
+              <span class="text-sm font-medium text-notion-text dark:text-notion-text-dark">{{ p.name }}</span>
+              <span v-if="p.is_default" class="badge bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 text-[10px]">默认</span>
+            </div>
+            <p class="text-xs text-notion-muted dark:text-notion-muted-dark font-mono">{{ p.base_url }}</p>
+          </div>
+          <div class="text-right">
+            <p class="text-xs text-notion-muted dark:text-notion-muted-dark">模型</p>
+            <p class="text-sm font-mono text-notion-text dark:text-notion-text-dark">{{ p.model || '未选择' }}</p>
+          </div>
+          <div class="text-right">
+            <p class="text-xs text-notion-muted dark:text-notion-muted-dark">API Key</p>
+            <p class="text-sm font-mono text-notion-text dark:text-notion-text-dark">****</p>
+          </div>
+        </div>
+      </div>
+      <div v-else class="text-sm text-notion-muted dark:text-notion-muted-dark">
+        管理员暂未配置 AI 服务商
+      </div>
+    </div>
+
+    <!-- 未授权提示（仅普通用户且未被授权时显示） -->
+    <div v-if="!isAdmin && !adminConfig.authorized" class="card mb-6 border-l-4 border-amber-400">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-btn flex items-center justify-center bg-amber-50 dark:bg-amber-900/20">
+          <svg class="w-4 h-4 text-amber-500 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+          </svg>
+        </div>
+        <div>
+          <p class="text-sm text-notion-text dark:text-notion-text-dark">您尚未被授权使用管理员的 AI 配置</p>
+          <p class="text-xs text-notion-muted dark:text-notion-muted-dark mt-0.5">请添加自己的 AI 服务商以使用 AI 校验功能</p>
         </div>
       </div>
     </div>
@@ -288,10 +400,27 @@ function cancelModelPicker() {
               <div class="flex items-center gap-2">
                 <h3 class="text-base font-semibold text-notion-text dark:text-notion-text-dark">{{ p.name }}</h3>
                 <span v-if="p.is_default" class="badge bg-notion-accent/10 text-notion-accent dark:bg-notion-accent-dark/15 dark:text-notion-accent-dark text-[10px]">默认</span>
+                <span v-if="!p.enabled" class="badge bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400 text-[10px]">已停用</span>
               </div>
               <p class="text-xs text-notion-muted dark:text-notion-muted-dark mt-0.5 font-mono">{{ p.base_url }}</p>
             </div>
           </div>
+          <!-- 启用/停用开关 -->
+          <button
+            @click="toggleEnabled(p)"
+            :class="[
+              'relative w-11 h-6 rounded-full transition-colors flex-shrink-0',
+              p.enabled ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'
+            ]"
+            :title="p.enabled ? '点击停用' : '点击启用'"
+          >
+            <span
+              :class="[
+                'absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform',
+                p.enabled ? 'translate-x-5' : 'translate-x-0'
+              ]"
+            />
+          </button>
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">

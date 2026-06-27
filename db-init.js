@@ -65,6 +65,7 @@ db.exec(`
     api_key     TEXT NOT NULL,
     model       TEXT DEFAULT '',
     is_default  INTEGER DEFAULT 0,
+    enabled     INTEGER DEFAULT 1,
     created_at  DATETIME,
     updated_at  DATETIME
   );
@@ -101,7 +102,8 @@ db.exec(`
     last_login_at     DATETIME,
     is_active         INTEGER DEFAULT 1,
     failed_attempts   INTEGER DEFAULT 0,
-    locked_until      DATETIME
+    locked_until      DATETIME,
+    can_use_admin_ai  INTEGER DEFAULT 0
   );
 
   CREATE TABLE IF NOT EXISTS user_category_restrictions (
@@ -111,6 +113,22 @@ db.exec(`
     PRIMARY KEY (user_id, category),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
   );
+
+  CREATE TABLE IF NOT EXISTS user_ai_providers (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id     INTEGER NOT NULL,
+    name        TEXT NOT NULL,
+    base_url    TEXT NOT NULL,
+    api_key     TEXT NOT NULL,
+    model       TEXT DEFAULT '',
+    is_default  INTEGER DEFAULT 0,
+    enabled     INTEGER DEFAULT 1,
+    created_at  DATETIME,
+    updated_at  DATETIME,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_user_ai_providers_user ON user_ai_providers(user_id);
 
   CREATE TABLE IF NOT EXISTS site_settings (
     key         TEXT PRIMARY KEY,

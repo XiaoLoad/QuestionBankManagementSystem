@@ -23,7 +23,7 @@ module.exports = function (getDb, helpers, auth) {
     try {
       const db = getDb();
       const users = db.prepare(`
-        SELECT id, username, role, display_name, restriction_mode, created_at, updated_at, last_login_at, is_active, failed_attempts, locked_until
+        SELECT id, username, role, display_name, restriction_mode, created_at, updated_at, last_login_at, is_active, failed_attempts, locked_until, can_use_admin_ai
         FROM users
         ORDER BY created_at DESC
       `).all();
@@ -123,7 +123,7 @@ module.exports = function (getDb, helpers, auth) {
   router.put('/:id', (req, res) => {
     try {
       const { id } = req.params;
-      const { displayName, role, isActive, restrictedCategories, restrictionMode } = req.body;
+      const { displayName, role, isActive, restrictedCategories, restrictionMode, canUseAdminAi } = req.body;
 
       const db = getDb();
       const user = db.prepare('SELECT * FROM users WHERE id = ?').get(id);
@@ -167,6 +167,11 @@ module.exports = function (getDb, helpers, auth) {
           updates.push('restriction_mode = ?');
           params.push(restrictionMode);
         }
+      }
+
+      if (canUseAdminAi !== undefined) {
+        updates.push('can_use_admin_ai = ?');
+        params.push(canUseAdminAi ? 1 : 0);
       }
 
       const updateUser = db.transaction(() => {
