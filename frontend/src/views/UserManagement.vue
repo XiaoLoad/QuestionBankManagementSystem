@@ -62,9 +62,14 @@
                 </div>
               </td>
               <td class="py-3 px-4">
-                <span :class="user.is_active ? 'badge bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'badge bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'">
-                  {{ user.is_active ? '启用' : '禁用' }}
-                </span>
+                <div class="flex items-center gap-1.5 flex-wrap">
+                  <span :class="user.is_active ? 'badge bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'badge bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'">
+                    {{ user.is_active ? '启用' : '禁用' }}
+                  </span>
+                  <span v-if="isLocked(user)" class="badge bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                    已锁定
+                  </span>
+                </div>
               </td>
               <td class="py-3 px-4 text-sm text-notion-muted dark:text-notion-muted-dark">
                 {{ user.last_login_at ? formatDate(user.last_login_at) : '从未登录' }}
@@ -74,6 +79,11 @@
               </td>
               <td class="py-3 px-4 text-right">
                 <div class="flex items-center justify-end gap-2">
+                  <button v-if="isLocked(user)" @click="unlockUser(user)" class="p-1.5 text-notion-muted dark:text-notion-muted-dark hover:text-green-600 dark:hover:text-green-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors" title="解锁账号">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+                    </svg>
+                  </button>
                   <button @click="router.push(`/users/${user.id}/logs`)" class="p-1.5 text-notion-muted dark:text-notion-muted-dark hover:text-blue-600 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors" title="活动日志">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
@@ -124,6 +134,9 @@
               <span :class="user.is_active ? 'badge text-[10px] bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'badge text-[10px] bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'">
                 {{ user.is_active ? '启用' : '禁用' }}
               </span>
+              <span v-if="isLocked(user)" class="badge text-[10px] bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                已锁定
+              </span>
               <span v-if="user.role !== 'admin' && user.restrictedCategories && user.restrictedCategories.length > 0" :class="['badge text-[10px]', user.restriction_mode === 'block' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400']">
                 {{ user.restriction_mode === 'block' ? '禁' : '仅' }}{{ user.restrictedCategories.length }}类
               </span>
@@ -134,6 +147,11 @@
               {{ user.last_login_at ? '登录: ' + formatDate(user.last_login_at) : '从未登录' }}
             </span>
             <div class="flex items-center gap-1">
+              <button v-if="isLocked(user)" @click="unlockUser(user)" class="p-1.5 text-notion-muted dark:text-notion-muted-dark hover:text-green-600 dark:hover:text-green-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors" title="解锁账号">
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+                </svg>
+              </button>
               <button @click="router.push(`/users/${user.id}/logs`)" class="p-1.5 text-notion-muted dark:text-notion-muted-dark hover:text-blue-600 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors" title="活动日志">
                 <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
@@ -452,6 +470,11 @@ function formatDate(dateStr) {
   })
 }
 
+function isLocked(user) {
+  if (!user.locked_until) return false
+  return new Date(user.locked_until) > new Date()
+}
+
 async function fetchUsers() {
   loading.value = true
   try {
@@ -686,6 +709,36 @@ async function deleteUser(user) {
     }
   } catch (err) {
     toastStore.error(`删除失败: ${err.message}`)
+  }
+}
+
+async function unlockUser(user) {
+  const confirmed = await confirmStore.show({
+    title: '解锁账号',
+    message: `确定要解锁用户 "${user.username}" 吗？将清除失败登录记录。`,
+    confirmText: '解锁',
+    cancelText: '取消'
+  })
+
+  if (!confirmed) return
+
+  try {
+    const res = await fetch(`/api/users/${user.id}/unlock`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
+    })
+
+    if (res.ok) {
+      toastStore.success('账号已解锁')
+      fetchUsers()
+    } else {
+      const data = await res.json()
+      toastStore.error(data.error || '解锁失败')
+    }
+  } catch (err) {
+    toastStore.error(`解锁失败: ${err.message}`)
   }
 }
 

@@ -196,6 +196,10 @@ function initDatabase(db) {
   // Add restriction_mode column to users if not exists
   try { db.exec(`ALTER TABLE users ADD COLUMN restriction_mode TEXT DEFAULT 'allow'`); } catch {}
 
+  // Add login lockout columns to users if not exists
+  try { db.exec(`ALTER TABLE users ADD COLUMN failed_attempts INTEGER DEFAULT 0`); } catch {}
+  try { db.exec(`ALTER TABLE users ADD COLUMN locked_until DATETIME`); } catch {}
+
   // Ensure site_settings table exists
   try {
     db.exec(`CREATE TABLE IF NOT EXISTS site_settings (

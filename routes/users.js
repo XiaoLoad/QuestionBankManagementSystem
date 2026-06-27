@@ -23,7 +23,7 @@ module.exports = function (getDb, helpers, auth) {
     try {
       const db = getDb();
       const users = db.prepare(`
-        SELECT id, username, role, display_name, restriction_mode, created_at, updated_at, last_login_at, is_active
+        SELECT id, username, role, display_name, restriction_mode, created_at, updated_at, last_login_at, is_active, failed_attempts, locked_until
         FROM users
         ORDER BY created_at DESC
       `).all();
@@ -262,6 +262,31 @@ module.exports = function (getDb, helpers, auth) {
       res.json({ message: '密码重置成功' });
     } catch (err) {
       res.status(500).json({ error: '重置密码失败: ' + err.message });
+    }
+  });
+
+  /**
+   * POST /api/users/:id/unlock
+   * 解锁用户账号
+   */
+  router.post('/:id/unlock', (req, res) => {
+    try {
+      const { id } = req.params;
+
+      const db = getDb();
+      const user = db.prepare('SELECT * FROM users WHERE id = ?').get(id);
+
+      if (!user) {
+        return res.status(404).json({ error: '用户不存在' });
+      }
+
+      const now = localNow();
+      db.prepare('UPDATE users SET failed_attempts = 0, locked_until = NULL, updated_at = ? WHERE id = ?')
+        .run(now, id);
+
+      res.json({ message: '账号已解锁' });
+    } catch (err) {
+      res.status(500).json({ error: '解锁失败: ' + err.message });
     }
   });
 

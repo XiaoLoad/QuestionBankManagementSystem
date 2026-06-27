@@ -99,7 +99,9 @@ db.exec(`
     created_at        DATETIME,
     updated_at        DATETIME,
     last_login_at     DATETIME,
-    is_active         INTEGER DEFAULT 1
+    is_active         INTEGER DEFAULT 1,
+    failed_attempts   INTEGER DEFAULT 0,
+    locked_until      DATETIME
   );
 
   CREATE TABLE IF NOT EXISTS user_category_restrictions (
