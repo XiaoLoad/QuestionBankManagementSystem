@@ -231,7 +231,8 @@ watch(state, (val) => {
 watch(
   [state, currentIndex, records],
   () => {
-    if (state.value !== "setup") {
+    // 仅在刷题进行中或结果页保存进度，setup 状态不保存
+    if (state.value === "quiz" || state.value === "result") {
       saveProgress();
     }
   },
