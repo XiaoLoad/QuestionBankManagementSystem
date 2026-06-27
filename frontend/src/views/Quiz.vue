@@ -42,6 +42,14 @@ const countdown = ref(0);
 let autoAdvanceTimer = null;
 let countdownTimer = null;
 
+// AI 解析展开状态
+const analysisExpanded = ref(false);
+
+// AI 校验状态
+const aiAnalyzing = ref(false);
+const aiAnalysisResult = ref(null);
+const aiAnalysisError = ref('');
+
 // Type counts
 const typeCounts = ref({});
 const typeCountsLoading = ref(false);
@@ -275,6 +283,9 @@ function resetAnswer() {
   clearAutoAdvance();
   answered.value = false;
   checkResult.value = null;
+  analysisExpanded.value = false;
+  aiAnalysisResult.value = null;
+  aiAnalysisError.value = '';
   const q = currentQuestion.value;
   if (!q) return;
   if (q.type === "多选题") {
@@ -402,6 +413,9 @@ function goNext() {
 function goPrev() {
   if (currentIndex.value > 0) {
     currentIndex.value--;
+    analysisExpanded.value = false;
+    aiAnalysisResult.value = null;
+    aiAnalysisError.value = '';
     // Don't allow re-answer, just view
     const rec = records.value.find((r) => r.id === currentQuestion.value?.id);
     if (rec) {
@@ -420,6 +434,9 @@ function goPrev() {
 
 function jumpTo(idx) {
   currentIndex.value = idx;
+  analysisExpanded.value = false;
+  aiAnalysisResult.value = null;
+  aiAnalysisError.value = '';
   const rec = records.value.find((r) => r.id === currentQuestion.value?.id);
   if (rec) {
     answered.value = true;
@@ -481,36 +498,74 @@ function isOptionSelected(opt) {
   return userAnswer.value === opt;
 }
 
-function getOptionClass(opt) {
+// AI 校验
+async function handleAiAnalyze() {
+  const q = currentQuestion.value;
+  if (!q) return;
+
+  aiAnalyzing.value = true;
+  aiAnalysisError.value = '';
+  try {
+    const result = await api.analyzeQuestion({
+      type: q.type,
+      content: q.content,
+      options: q.options || [],
+      forceRefresh: false,
+    });
+    aiAnalysisResult.value = result;
+    analysisExpanded.value = true;
+    // 更新本地数据
+    if (result.analysis) {
+      q.analysis = result.analysis;
+      q.ai_answer = result.answer || [];
+    }
+  } catch (err) {
+    aiAnalysisError.value = err.data?.error || 'AI 分析失败';
+  } finally {
+    aiAnalyzing.value = false;
+  }
+}
+
+function getOptionBgClass(opt) {
   if (!answered.value) {
     return isOptionSelected(opt)
-      ? "border-notion-accent dark:border-notion-accent-dark bg-notion-accent/5 dark:bg-notion-accent-dark/10"
-      : "border-notion-border dark:border-notion-border-dark hover:border-gray-300 dark:hover:border-gray-600";
+      ? "bg-notion-accent/10 dark:bg-notion-accent-dark/15"
+      : "bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-700/50";
   }
-  const q = currentQuestion.value;
   const isCorrect = checkResult.value?.correctAnswers?.includes(opt);
   const isUserSelected = isOptionSelected(opt);
-  if (isCorrect) return "border-green-400 bg-green-50 dark:bg-green-900/20";
+  if (isCorrect) return "bg-green-50 dark:bg-green-900/20";
   if (isUserSelected && !isCorrect)
-    return "border-red-400 bg-red-50 dark:bg-red-900/20";
-  return "border-notion-border dark:border-notion-border-dark opacity-50";
+    return "bg-red-50 dark:bg-red-900/20";
+  return "bg-gray-50 dark:bg-gray-800/50 opacity-50";
+}
+
+function getOptionBarClass(opt) {
+  if (!answered.value) {
+    return isOptionSelected(opt) ? "bg-notion-accent dark:bg-notion-accent-dark" : null;
+  }
+  const isCorrect = checkResult.value?.correctAnswers?.includes(opt);
+  const isUserSelected = isOptionSelected(opt);
+  if (isCorrect) return "bg-green-500";
+  if (isUserSelected && !isCorrect) return "bg-red-500";
+  return null;
 }
 
 function getBoolClass(val) {
   if (!answered.value) {
     return userAnswer.value === val
-      ? "border-notion-accent dark:border-notion-accent-dark bg-notion-accent/5 dark:bg-notion-accent-dark/10"
-      : "border-notion-border dark:border-notion-border-dark hover:border-gray-300 dark:hover:border-gray-600";
+      ? "bg-notion-accent/10 dark:bg-notion-accent-dark/15 border-2 border-notion-accent dark:border-notion-accent-dark"
+      : "bg-gray-50 dark:bg-gray-800/50 border-2 border-transparent hover:bg-gray-100 dark:hover:bg-gray-700/50";
   }
   const correctVal = checkResult.value?.correctAnswers?.[0];
   const normalizedCorrect =
     correctVal === "对" || correctVal === "正确" ? "对" : "错";
   const isCorrect = val === normalizedCorrect;
   const isUserSelected = userAnswer.value === val;
-  if (isCorrect) return "border-green-400 bg-green-50 dark:bg-green-900/20";
+  if (isCorrect) return "bg-green-50 dark:bg-green-900/20 border-2 border-green-500";
   if (isUserSelected && !isCorrect)
-    return "border-red-400 bg-red-50 dark:bg-red-900/20";
-  return "border-notion-border dark:border-notion-border-dark opacity-50";
+    return "bg-red-50 dark:bg-red-900/20 border-2 border-red-500";
+  return "bg-gray-50 dark:bg-gray-800/50 border-2 border-transparent opacity-50";
 }
 </script>
 
@@ -907,10 +962,10 @@ function getBoolClass(val) {
       </div>
 
       <!-- Question card -->
-      <div class="card flex-1 min-h-0 flex flex-col overflow-hidden p-3 sm:p-6">
+      <div class="card flex-1 min-h-0 flex flex-col overflow-hidden p-3 sm:p-5">
         <!-- Scrollable content -->
         <div class="flex-1 overflow-y-auto pr-1">
-          <div class="flex items-center gap-1.5 sm:gap-2 mb-3 sm:mb-4">
+          <div class="flex items-center gap-1.5 sm:gap-2 mb-2 sm:mb-3">
             <span class="badge badge-type text-xs">{{
               currentQuestion.type
             }}</span>
@@ -920,7 +975,7 @@ function getBoolClass(val) {
           </div>
 
           <p
-            class="text-sm sm:text-base text-notion-text dark:text-notion-text-dark leading-relaxed whitespace-pre-wrap mb-3 sm:mb-4"
+            class="text-sm sm:text-base text-notion-text dark:text-notion-text-dark leading-relaxed whitespace-pre-wrap mb-2 sm:mb-3"
           >
             {{ currentQuestion.content }}
           </p>
@@ -948,56 +1003,67 @@ function getBoolClass(val) {
               ['单选题', '多选题'].includes(currentQuestion.type) &&
               displayOptions.length
             "
-            class="space-y-1.5 sm:space-y-2 mb-3 sm:mb-4"
+            class="space-y-1 sm:space-y-1.5 mb-3 sm:mb-4"
           >
             <button
               v-for="(opt, i) in displayOptions"
               :key="opt"
               @click="!reviewMode && selectOption(opt)"
               :class="[
-                'w-full text-left px-3 sm:px-4 py-3 sm:py-3 rounded-btn border-2 transition-all text-sm min-h-[44px]',
+                'w-full text-left pl-5 pr-3 sm:pl-6 sm:pr-4 py-3 sm:py-3 rounded-lg transition-all text-sm min-h-[44px] flex items-start gap-2 relative overflow-hidden',
                 reviewMode
-                  ? getOptionClass(opt) + ' cursor-default'
-                  : getOptionClass(opt),
+                  ? getOptionBgClass(opt) + ' cursor-default'
+                  : getOptionBgClass(opt),
               ]"
             >
+              <!-- 左侧状态色条 -->
+              <Transition name="bar">
+                <div
+                  v-if="getOptionBarClass(opt)"
+                  :class="[
+                    'absolute left-0 top-1.5 bottom-1.5 w-1 rounded-sm',
+                    getOptionBarClass(opt),
+                  ]"
+                ></div>
+              </Transition>
               <span
-                class="font-medium mr-2 text-notion-muted dark:text-notion-muted-dark"
-                >{{ String.fromCharCode(65 + i) }}.</span
+                class="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium"
+                :class="isOptionSelected(opt) ? 'bg-notion-accent text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400'"
+                >{{ String.fromCharCode(65 + i) }}</span
               >
-              <span class="break-words">{{ opt }}</span>
+              <span class="break-words flex-1 pt-0.5">{{ opt }}</span>
             </button>
           </div>
 
           <!-- 判断题 -->
           <div
             v-if="currentQuestion.type === '判断题'"
-            class="flex gap-3 sm:gap-4 mb-3 sm:mb-4"
+            class="flex gap-2 sm:gap-3 mb-3 sm:mb-4"
           >
             <button
               @click="selectBool('对')"
               :class="[
-                'flex-1 py-5 sm:py-4 rounded-btn border-2 text-base font-medium text-center transition-all min-h-[56px]',
+                'flex-1 py-6 sm:py-5 rounded-lg text-base font-medium text-center transition-all min-h-[56px]',
                 getBoolClass('对'),
               ]"
             >
-              对
+              ✓ 对
             </button>
             <button
               @click="selectBool('错')"
               :class="[
-                'flex-1 py-5 sm:py-4 rounded-btn border-2 text-base font-medium text-center transition-all min-h-[56px]',
+                'flex-1 py-6 sm:py-5 rounded-lg text-base font-medium text-center transition-all min-h-[56px]',
                 getBoolClass('错'),
               ]"
             >
-              错
+              ✗ 错
             </button>
           </div>
 
           <!-- 填空 / 简答 -->
           <div
             v-if="['填空题', '简答题'].includes(currentQuestion.type)"
-            class="mb-3 sm:mb-4"
+            class="mb-2 sm:mb-3"
           >
             <!-- 复习模式：直接显示答案 -->
             <div
@@ -1026,7 +1092,7 @@ function getBoolClass(val) {
             />
           </div>
 
-          <!-- Answer feedback (非填空/简答题的复习模式，或答题模式) -->
+          <!-- 统一结果区域：答题反馈 + AI 解析 -->
           <div
             v-if="
               answered &&
@@ -1036,39 +1102,103 @@ function getBoolClass(val) {
                 ['填空题', '简答题'].includes(currentQuestion.type)
               )
             "
-            class="mb-3 sm:mb-4 p-3 sm:p-4 rounded-btn"
+            class="mb-3 sm:mb-4 rounded-lg overflow-hidden"
             :class="
               checkResult.correct
-                ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
-                : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
+                ? 'bg-green-50 dark:bg-green-900/20'
+                : 'bg-red-50 dark:bg-red-900/20'
             "
           >
-            <div class="flex items-center gap-2 mb-1">
-              <span
-                v-if="checkResult.correct"
-                class="text-green-600 dark:text-green-400 font-medium text-sm"
-                >回答正确</span
+            <!-- 答题反馈 -->
+            <div class="px-3 sm:px-4 py-3">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span v-if="checkResult.correct" class="text-green-600 dark:text-green-400">✓</span>
+                  <span v-else class="text-red-600 dark:text-red-400">✗</span>
+                  <span
+                    :class="checkResult.correct ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'"
+                    class="font-medium text-sm"
+                  >
+                    {{ checkResult.correct ? '回答正确' : '回答错误' }}
+                  </span>
+                </div>
+                <span
+                  v-if="countdown > 0"
+                  class="text-xs text-notion-muted dark:text-notion-muted-dark"
+                >
+                  {{ countdown }}s 后下一题
+                </span>
+              </div>
+              <div
+                v-if="!checkResult.correct"
+                class="mt-1.5 text-xs sm:text-sm text-notion-text dark:text-notion-text-dark"
               >
-              <span
+                正确答案：<span class="font-medium text-green-700 dark:text-green-400">{{ checkResult.correctAnswers?.join("、") }}</span>
+              </div>
+            </div>
+
+            <!-- AI 解析区域 -->
+            <div class="border-t" :class="checkResult.correct ? 'border-green-200 dark:border-green-800' : 'border-red-200 dark:border-red-800'">
+              <!-- 有解析时显示 -->
+              <template v-if="currentQuestion?.analysis || aiAnalysisResult?.analysis">
+                <button
+                  @click="analysisExpanded = !analysisExpanded"
+                  class="w-full flex items-center justify-between px-3 sm:px-4 py-2.5 text-left"
+                >
+                  <div class="flex items-center gap-2">
+                    <svg class="w-4 h-4 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                    </svg>
+                    <span class="text-xs font-medium text-purple-700 dark:text-purple-300">AI 解析</span>
+                  </div>
+                  <svg
+                    class="w-4 h-4 text-purple-600 dark:text-purple-400 transition-transform duration-200"
+                    :class="analysisExpanded ? 'rotate-180' : ''"
+                    fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                  >
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                  </svg>
+                </button>
+                <Transition name="expand">
+                  <div v-if="analysisExpanded" class="px-3 sm:px-4 pb-3">
+                    <p class="text-xs sm:text-sm text-notion-text dark:text-notion-text-dark leading-relaxed whitespace-pre-wrap break-words">
+                      {{ currentQuestion.analysis || aiAnalysisResult?.analysis }}
+                    </p>
+                    <div v-if="(currentQuestion.ai_answer && currentQuestion.ai_answer.length > 0) || (aiAnalysisResult?.answer && aiAnalysisResult.answer.length > 0)" class="mt-2 pt-2 border-t border-purple-200/50 dark:border-purple-800/50">
+                      <p class="text-[10px] sm:text-xs text-purple-600 dark:text-purple-400 mb-1">AI 答案：</p>
+                      <div class="flex flex-wrap gap-1">
+                        <span
+                          v-for="(ans, i) in (currentQuestion.ai_answer || aiAnalysisResult?.answer || [])"
+                          :key="i"
+                          class="px-1.5 py-0.5 rounded text-[10px] sm:text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300"
+                        >
+                          {{ ans }}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </Transition>
+              </template>
+
+              <!-- 无解析时显示 AI 校验按钮 -->
+              <button
                 v-else
-                class="text-red-600 dark:text-red-400 font-medium text-sm"
-                >回答错误</span
+                @click="handleAiAnalyze"
+                :disabled="aiAnalyzing"
+                class="w-full flex items-center justify-center gap-2 px-3 py-2.5 text-purple-600 dark:text-purple-400 hover:bg-purple-100/50 dark:hover:bg-purple-900/20 transition-colors"
               >
-            </div>
-            <div
-              v-if="!checkResult.correct"
-              class="text-xs sm:text-sm text-notion-text dark:text-notion-text-dark"
-            >
-              正确答案：<span
-                class="font-medium text-green-600 dark:text-green-400"
-                >{{ checkResult.correctAnswers?.join("、") }}</span
-              >
-            </div>
-            <div
-              v-if="countdown > 0"
-              class="text-xs text-notion-muted dark:text-notion-muted-dark mt-1"
-            >
-              {{ countdown }} 秒后自动下一题
+                <svg v-if="aiAnalyzing" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                </svg>
+                <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                </svg>
+                <span class="text-xs font-medium">{{ aiAnalyzing ? 'AI 分析中...' : 'AI 校验答案' }}</span>
+              </button>
+              <p v-if="aiAnalysisError" class="px-3 pb-2 text-[10px] text-red-500 dark:text-red-400 text-center">
+                {{ aiAnalysisError }}
+              </p>
             </div>
           </div>
         </div>
@@ -1256,3 +1386,51 @@ function getBoolClass(val) {
     </div>
   </div>
 </template>
+
+<style scoped>
+/* 色条进入/离开动画 */
+.bar-enter-active {
+  transition: all 0.3s ease-out;
+}
+.bar-leave-active {
+  transition: all 0.2s ease-in;
+}
+.bar-enter-from {
+  opacity: 0;
+  transform: scaleY(0);
+}
+.bar-leave-to {
+  opacity: 0;
+  transform: scaleY(0);
+}
+
+/* 解析展开/收起动画 */
+.expand-enter-active {
+  transition: all 0.3s ease-out;
+  overflow: hidden;
+}
+.expand-leave-active {
+  transition: all 0.2s ease-in;
+  overflow: hidden;
+}
+.expand-enter-from {
+  opacity: 0;
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+.expand-enter-to {
+  opacity: 1;
+  max-height: 500px;
+}
+.expand-leave-from {
+  opacity: 1;
+  max-height: 500px;
+}
+.expand-leave-to {
+  opacity: 0;
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+</style>

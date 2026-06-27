@@ -107,7 +107,7 @@ module.exports = function (getDb, { safeParse, sendError, localNow }, auth) {
       }
 
       const order = mode === 'random' ? 'RANDOM()' : 'id ASC';
-      const rows = db.prepare(`SELECT id, type, content, options, category, images FROM data_questions ${where} ORDER BY ${order} LIMIT @limit`).all({ ...params, limit: lim });
+      const rows = db.prepare(`SELECT id, type, content, options, category, images, analysis, ai_answer FROM data_questions ${where} ORDER BY ${order} LIMIT @limit`).all({ ...params, limit: lim });
 
       const items = rows.map(row => ({
         id: row.id,
@@ -116,6 +116,8 @@ module.exports = function (getDb, { safeParse, sendError, localNow }, auth) {
         category: row.category,
         options: row.options ? stripOptionPrefix(safeParse(row.options)) : null,
         images: row.images ? safeParse(row.images) : [],
+        analysis: row.analysis || null,
+        ai_answer: row.ai_answer ? safeParse(row.ai_answer) : null,
       }));
 
       // 记录开始日志（区分刷题和复习模式）
