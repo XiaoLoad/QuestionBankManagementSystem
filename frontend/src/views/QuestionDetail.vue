@@ -1,13 +1,15 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useApi } from '@/composables/useApi'
 import { useToastStore } from '@/stores/toast'
 import { useConfirmStore } from '@/stores/confirm'
+import { useAiTaskStore } from '@/stores/aiTask'
 import { TYPE_COLORS } from '@/composables/constants'
 import { formatDate, formatJson } from '@/composables/utils'
 import { normalizeAnswer } from '@/composables/utils'
 import QuestionFormModal from '@/components/QuestionFormModal.vue'
+import AiAnalyzeModal from '@/components/AiAnalyzeModal.vue'
 
 defineOptions({ name: 'QuestionDetail' })
 
@@ -16,17 +18,32 @@ const router = useRouter()
 const api = useApi()
 const toast = useToastStore()
 const confirm = useConfirmStore()
+const aiTask = useAiTaskStore()
 
 const question = ref(null)
 const loading = ref(true)
 const categories = ref([])
 const showEditForm = ref(false)
+const showAiModal = ref(false)
 
 // AI analyze state
 const analyzing = ref(false)
 const aiResult = ref(null)
 const aiError = ref('')
+
+// 按钮状态：是否正在生成当前题目的 AI 解析
+const isAiGenerating = computed(() => {
+  return aiTask.isGenerating && aiTask.task?.questionId === question.value?.id
+})
+
+// 按钮文字
+const aiButtonText = computed(() => {
+  if (isAiGenerating.value) return 'AI 生成中...'
+  if (question.value?.analysis) return '查看 AI 解析'
+  return 'AI 校验答案'
+})
 const rawExpanded = ref(false)
+const aiStreamCache = ref(null) // 缓存流式结果
 
 onMounted(async () => {
   try {
@@ -48,6 +65,13 @@ onMounted(async () => {
         provider: '',
         rawResponse: '',
         cached: true,
+      }
+      // 初始化流式缓存
+      aiStreamCache.value = {
+        analysis: q.analysis,
+        answer: cachedAnswer,
+        model: '',
+        provider: '',
       }
     }
   } catch (e) {
@@ -106,9 +130,16 @@ async function handleDelete() {
   }
 }
 
-async function handleAiAnalyze() {
-  // 如果已有缓存，弹窗确认是否覆盖
-  if (question.value.analysis) {
+async function handleAiAnalyze(forceRefresh = false) {
+  // 如果正在生成中，直接打开弹窗查看进度
+  if (isAiGenerating.value) {
+    showAiModal.value = true
+    aiTask.setModalOpen(true)
+    return
+  }
+
+  // 如果已有缓存且不是强制刷新，弹窗确认是否覆盖
+  if (question.value.analysis && !forceRefresh) {
     const ok = await confirm.show({
       title: '已有解析缓存',
       message: '该题目已有 AI 生成的解析，是否重新校验？新解析将覆盖旧内容。',
@@ -116,30 +147,72 @@ async function handleAiAnalyze() {
       danger: false,
     })
     if (!ok) return
+    forceRefresh = true
   }
 
-  analyzing.value = true
-  aiError.value = ''
-  try {
-    const result = await api.analyzeQuestion({
-      type: question.value.type,
-      content: question.value.content,
-      options: renderOptions(question.value.options),
-      forceRefresh: !!question.value.analysis,
-      // 不传 answers！
-    })
-    aiResult.value = result
-    // 更新本地缓存
-    if (result.analysis) {
-      question.value.analysis = result.analysis
-      question.value.ai_answer = JSON.stringify(result.answer || [])
+  // 打开 AI 弹窗
+  showAiModal.value = true
+  aiTask.setModalOpen(true)
+}
+
+// AI 弹窗结果回调
+function handleAiResult(result) {
+  if (result && result.analysis) {
+    aiResult.value = {
+      analysis: result.analysis,
+      answer: result.answer || [],
+      model: result.model || '',
+      provider: result.provider || '',
+      rawResponse: '',
+      cached: false,
     }
-  } catch (err) {
-    aiError.value = err.data?.error || 'AI 分析失败'
-  } finally {
-    analyzing.value = false
+    // 更新本地缓存
+    question.value.analysis = result.analysis
+    question.value.ai_answer = JSON.stringify(result.answer || [])
+    // 缓存流式结果
+    aiStreamCache.value = {
+      analysis: result.analysis,
+      answer: result.answer || [],
+      model: result.model || '',
+      provider: result.provider || '',
+    }
   }
 }
+
+// 关闭 AI 弹窗
+function handleAiClose() {
+  showAiModal.value = false
+  aiTask.setModalOpen(false)
+}
+
+// 监听任务完成，同步状态到本地
+watch(() => aiTask.task, (task) => {
+  if (!task || !question.value) return
+  // 只处理当前题目的任务
+  if (task.questionId !== question.value.id) return
+
+  if (task.status === 'completed' && task.result) {
+    const result = task.result
+    aiResult.value = {
+      analysis: result.analysis,
+      answer: result.answer || [],
+      model: result.model || '',
+      provider: result.provider || '',
+      rawResponse: '',
+      cached: false,
+    }
+    // 更新本地缓存
+    question.value.analysis = result.analysis
+    question.value.ai_answer = JSON.stringify(result.answer || [])
+    // 缓存流式结果
+    aiStreamCache.value = {
+      analysis: result.analysis,
+      answer: result.answer || [],
+      model: result.model || '',
+      provider: result.provider || '',
+    }
+  }
+}, { deep: true })
 
 function formatDateDisplay(dateStr) {
   return formatDate(dateStr, 'datetime')
@@ -217,15 +290,15 @@ function answersMatch(aiAnswers, currentAnswers) {
               </svg>
               删除
             </button>
-            <button @click="handleAiAnalyze" :disabled="analyzing" class="btn-primary text-sm">
-              <svg v-if="analyzing" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+            <button @click="handleAiAnalyze" :disabled="isAiGenerating" class="btn-primary text-sm">
+              <svg v-if="isAiGenerating" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
               </svg>
               <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5"/>
               </svg>
-              {{ analyzing ? 'AI 分析中...' : 'AI 校验答案' }}
+              {{ aiButtonText }}
             </button>
           </div>
         </div>
@@ -398,6 +471,15 @@ function answersMatch(aiAnswers, currentAnswers) {
       :categories="categories"
       @close="showEditForm = false"
       @submit="handleEditSubmit"
+    />
+
+    <!-- AI Analyze Modal -->
+    <AiAnalyzeModal
+      v-if="showAiModal"
+      :question="question"
+      :cachedResult="aiStreamCache"
+      @close="handleAiClose"
+      @result="handleAiResult"
     />
   </div>
 </template>

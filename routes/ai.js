@@ -517,5 +517,232 @@ module.exports = function (getDb, { md5, sendError, localNow, extractImageUrls, 
     } catch (err) { sendError(res, err, 'POST /api/ai/analyze'); }
   });
 
+  // POST /api/ai/analyze-stream (流式输出，SSE)
+  router.post('/analyze-stream', async (req, res) => {
+    try {
+      const db = getDb();
+      const { type, content, options, timeout } = req.body;
+      if (!type || !content) {
+        return res.status(400).json({ error: '题目类型和内容不能为空' });
+      }
+
+      // 设置 SSE 头
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+      res.setHeader('X-Accel-Buffering', 'no');
+
+      // 查找服务商（复用 analyze 逻辑）
+      const userId = req.user?.id;
+      const isAdmin = req.user?.role === 'admin';
+      let provider;
+
+      if (isAdmin) {
+        provider = db.prepare('SELECT * FROM ai_providers WHERE is_default = 1 AND enabled = 1').get();
+        if (!provider) provider = db.prepare('SELECT * FROM ai_providers WHERE enabled = 1 ORDER BY id ASC LIMIT 1').get();
+      } else {
+        provider = db.prepare('SELECT * FROM user_ai_providers WHERE user_id = ? AND is_default = 1 AND enabled = 1').get(userId);
+        if (!provider) {
+          provider = db.prepare('SELECT * FROM user_ai_providers WHERE user_id = ? AND enabled = 1 ORDER BY id ASC LIMIT 1').get(userId);
+        }
+        if (!provider) {
+          const user = db.prepare('SELECT can_use_admin_ai FROM users WHERE id = ?').get(userId);
+          if (user?.can_use_admin_ai) {
+            provider = db.prepare('SELECT * FROM ai_providers WHERE is_default = 1 AND enabled = 1').get();
+            if (!provider) provider = db.prepare('SELECT * FROM ai_providers WHERE enabled = 1 ORDER BY id ASC LIMIT 1').get();
+          }
+        }
+      }
+
+      if (!provider || !provider.model) {
+        res.write(`data: ${JSON.stringify({ type: 'error', message: '请先配置 AI 服务商' })}\n\n`);
+        return res.end();
+      }
+
+      // 构建提示词
+      let systemPrompt = '你是一个答题助手，只输出JSON格式的结果。';
+      let userPromptTemplate = `你是一个专业的答题助手。请分析以下题目，给出简要解析和正确答案。
+
+题型：{type}
+题目：{content}
+选项：{options}
+分类：{category}
+
+要求：
+1. 给出简要解析（不超过200字）
+2. 给出正确答案
+3. 严格按照以下JSON格式输出，不要输出其他任何内容
+
+输出格式：
+{"analysis":"解析内容","answer":["答案1"]}
+
+注意：
+- 单选题和判断题 answer 数组只有1个元素，多选题 answer 数组有多个元素
+- 填空题和简答题 answer 数组只有1个元素，为答案文本
+- 必须返回选项的完整文本内容，不要返回字母编号
+- 答案中不要使用双引号，如果必须引用请用单引号
+- 不要输出JSON以外的任何内容`;
+
+      // 读取管理员配置的默认提示词
+      try {
+        const adminPromptsRow = db.prepare("SELECT value FROM site_settings WHERE key = 'default_ai_prompts'").get();
+        if (adminPromptsRow?.value) {
+          const adminPrompts = JSON.parse(adminPromptsRow.value);
+          if (adminPrompts.analyze) {
+            if (adminPrompts.analyze.system) systemPrompt = adminPrompts.analyze.system;
+            if (adminPrompts.analyze.user) userPromptTemplate = adminPrompts.analyze.user;
+          }
+        }
+      } catch {}
+
+      // 读取用户自定义提示词
+      if (userId) {
+        try {
+          const userPrompt = db.prepare('SELECT system_prompt, user_prompt FROM user_ai_prompts WHERE user_id = ? AND prompt_key = ?').get(userId, 'analyze');
+          if (userPrompt) {
+            if (userPrompt.system_prompt) systemPrompt = userPrompt.system_prompt;
+            if (userPrompt.user_prompt) userPromptTemplate = userPrompt.user_prompt;
+          }
+        } catch {}
+      }
+
+      // 变量替换
+      const optionsStr = options && options.length > 0 && ['单选题', '多选题', '判断题'].includes(type)
+        ? options.map((o, i) => `${String.fromCharCode(65 + i)}. ${o}`).join(' ')
+        : '';
+
+      let category = '默认';
+      try {
+        const question = db.prepare('SELECT category FROM data_questions WHERE content = ? AND type = ? AND deleted_at IS NULL LIMIT 1').get(content, type);
+        const rawCategory = question?.category || '默认';
+        category = rawCategory.includes('_') ? rawCategory.split('_')[0] : rawCategory;
+      } catch {}
+
+      const prompt = userPromptTemplate
+        .replace(/\{type\}/g, type)
+        .replace(/\{content\}/g, content)
+        .replace(/\{options\}/g, optionsStr)
+        .replace(/\{category\}/g, category);
+
+      // 发送用户提问词
+      res.write(`data: ${JSON.stringify({ type: 'prompt', content: prompt })}\n\n`);
+
+      // 调用 AI API（流式）
+      const url = provider.base_url.replace(/\/+$/, '') + '/chat/completions';
+      const timeoutMs = Math.max(10000, Math.min(600000, parseInt(timeout) || 120000));
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+      let response;
+      try {
+        response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${provider.api_key}`,
+          },
+          body: JSON.stringify({
+            model: provider.model,
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: prompt },
+            ],
+            temperature: 0.1,
+            stream: true,
+          }),
+          signal: controller.signal,
+        });
+      } catch (fetchErr) {
+        clearTimeout(timeoutId);
+        const isTimeout = fetchErr.name === 'AbortError' || fetchErr.name === 'TimeoutError';
+        const isNetworkError = fetchErr.message.includes('fetch failed') || fetchErr.message.includes('network');
+        let errorMsg = isTimeout ? '请求超时，请稍后重试' : (isNetworkError ? '网络连接失败，请检查网络' : fetchErr.message);
+        res.write(`data: ${JSON.stringify({ type: 'error', message: errorMsg })}\n\n`);
+        return res.end();
+      }
+
+      if (!response.ok) {
+        clearTimeout(timeoutId);
+        const text = await response.text().catch(() => '');
+        // 不要直接返回 AI 服务商的 401 状态码
+        const status = response.status === 401 ? 502 : response.status;
+        const errorMsg = response.status === 401 ? 'API Key 无效，请检查 AI 设置' : `AI 请求失败: HTTP ${response.status}`;
+        res.write(`data: ${JSON.stringify({ type: 'error', message: errorMsg })}\n\n`);
+        return res.end();
+      }
+
+      // 流式读取
+      let fullContent = '';
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6).trim();
+            if (data === '[DONE]') continue;
+            try {
+              const parsed = JSON.parse(data);
+              const delta = parsed.choices?.[0]?.delta?.content || '';
+              if (delta) {
+                fullContent += delta;
+                res.write(`data: ${JSON.stringify({ type: 'chunk', content: delta })}\n\n`);
+              }
+            } catch {}
+          }
+        }
+      }
+
+      clearTimeout(timeoutId);
+
+      // 解析完整结果
+      let analysis = '', answer = [];
+      try {
+        const jsonMatch = fullContent.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0]);
+          analysis = parsed.analysis || fullContent;
+          answer = Array.isArray(parsed.answer) ? parsed.answer : [];
+        } else {
+          analysis = fullContent;
+        }
+      } catch {
+        analysis = fullContent;
+      }
+
+      // 缓存结果
+      if (analysis) {
+        try {
+          const now = localNow();
+          db.prepare('UPDATE data_questions SET analysis = ?, ai_answer = ?, updated_at = ? WHERE content = ? AND type = ? AND deleted_at IS NULL')
+            .run(analysis, JSON.stringify(answer), now, content, type);
+        } catch {}
+      }
+
+      // 记录日志
+      if (userId) {
+        try {
+          db.prepare('INSERT INTO user_activity_logs (user_id, action, detail, created_at) VALUES (?, ?, ?, ?)')
+            .run(userId, 'ai_analyze', JSON.stringify({ type, content: content.substring(0, 100), provider: provider.name, model: provider.model }), localNow());
+        } catch {}
+      }
+
+      // 发送完成信号
+      res.write(`data: ${JSON.stringify({ type: 'done', analysis, answer, model: provider.model, provider: provider.name })}\n\n`);
+      res.end();
+    } catch (err) {
+      res.write(`data: ${JSON.stringify({ type: 'error', message: err.message || 'AI 分析失败' })}\n\n`);
+      res.end();
+    }
+  });
+
   return router;
 };
