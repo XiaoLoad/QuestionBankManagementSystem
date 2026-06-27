@@ -463,6 +463,18 @@ const hasActiveFilters = computed(() => {
 
         <!-- 移动端：卡片布局 -->
         <div class="sm:hidden flex-1 overflow-y-auto">
+          <!-- 移动端全选 -->
+          <div class="sticky top-0 z-10 flex items-center gap-2 px-3 py-2 bg-notion-surface dark:bg-notion-surface-dark border-b border-notion-border dark:border-notion-border-dark">
+            <input
+              type="checkbox"
+              :checked="allSelected"
+              @change="toggleSelectAll"
+              class="accent-notion-accent dark:accent-notion-accent-dark"
+            />
+            <span class="text-xs text-notion-muted dark:text-notion-muted-dark">
+              {{ allSelected ? '取消全选' : '全选' }}（{{ questions.length }} 题）
+            </span>
+          </div>
           <div class="divide-y divide-notion-border dark:divide-notion-border-dark">
             <div
               v-for="q in questions"
