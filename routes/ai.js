@@ -148,8 +148,29 @@ module.exports = function (getDb, { md5, sendError, localNow, extractImageUrls, 
   router.post('/analyze', async (req, res) => {
     try {
       const db = getDb();
-      const { providerId, type, content, options, timeout } = req.body;
+      const { providerId, type, content, options, timeout, forceRefresh } = req.body;
       if (!type || !content) return res.status(400).json({ error: '题目类型和内容不能为空' });
+
+      // 检查是否有缓存的解析（通过内容匹配）
+      if (!forceRefresh) {
+        try {
+          const existing = db.prepare(
+            'SELECT analysis, ai_answer FROM data_questions WHERE content = ? AND type = ? AND deleted_at IS NULL AND analysis IS NOT NULL LIMIT 1'
+          ).get(content, type);
+          if (existing && existing.analysis) {
+            let cachedAnswer = [];
+            try { cachedAnswer = JSON.parse(existing.ai_answer || '[]'); } catch {}
+            return res.json({
+              analysis: existing.analysis,
+              answer: cachedAnswer,
+              model: '',
+              provider: '',
+              rawResponse: '',
+              cached: true,
+            });
+          }
+        } catch {}
+      }
 
       let provider;
       if (providerId) {
@@ -379,7 +400,21 @@ module.exports = function (getDb, { md5, sendError, localNow, extractImageUrls, 
         })
       }
 
-      res.json({ analysis, answer, model: provider.model, provider: provider.name, rawResponse });
+      // 缓存解析结果和AI答案到数据库
+      if (analysis) {
+        try {
+          const now = localNow();
+          const answerJson = JSON.stringify(answer || []);
+          const result = db.prepare(
+            'UPDATE data_questions SET analysis = ?, ai_answer = ?, updated_at = ? WHERE content = ? AND type = ? AND deleted_at IS NULL'
+          ).run(analysis, answerJson, now, content, type);
+          // 如果没有更新到记录（题目不在本地库），不做处理，解析结果仍会返回给前端
+        } catch (e) {
+          console.error('[ai] 缓存解析失败:', e.message);
+        }
+      }
+
+      res.json({ analysis, answer, model: provider.model, provider: provider.name, rawResponse, cached: false });
     } catch (err) { sendError(res, err, 'POST /api/ai/analyze'); }
   });
 

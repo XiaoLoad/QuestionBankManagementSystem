@@ -79,6 +79,12 @@ function initDatabase(db) {
   // Migration: add images column
   try { db.exec(`ALTER TABLE data_questions ADD COLUMN images TEXT`); } catch {}
 
+  // Migration: add analysis column (AI 解析缓存)
+  try { db.exec(`ALTER TABLE data_questions ADD COLUMN analysis TEXT`); } catch {}
+
+  // Migration: add ai_answer column (AI 答案缓存)
+  try { db.exec(`ALTER TABLE data_questions ADD COLUMN ai_answer TEXT`); } catch {}
+
   // Ensure data_categories table exists WITH score column
   try {
     db.exec(`CREATE TABLE IF NOT EXISTS data_categories (

@@ -40,7 +40,9 @@ db.exec(`
     answers     BLOB,
     right_status INTEGER DEFAULT 0,
     category    TEXT DEFAULT '默认',
-    images      TEXT
+    images      TEXT,
+    analysis    TEXT,
+    ai_answer   TEXT
   );
 
   CREATE TABLE IF NOT EXISTS data_categories (
