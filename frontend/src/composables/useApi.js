@@ -196,6 +196,17 @@ export function useApi() {
     getUserAiModels: (id) => request(`/api/user-ai/providers/${id}/models`),
     getUserAiAdminConfig: () => request('/api/user-ai/admin-config'),
 
+    // User AI Prompts
+    getUserAiPrompts: () => request('/api/user-ai/prompts'),
+    getUserAiPrompt: (key) => request(`/api/user-ai/prompts/${key}`),
+    updateUserAiPrompt: (key, body) => request(`/api/user-ai/prompts/${key}`, { method: 'PUT', body: JSON.stringify(body) }),
+    resetUserAiPrompt: (key) => request(`/api/user-ai/prompts/${key}/reset`, { method: 'POST' }),
+
+    // Admin Default Prompts
+    getDefaultPrompts: () => request('/api/user-ai/default-prompts'),
+    updateDefaultPrompt: (key, body) => request(`/api/user-ai/default-prompts/${key}`, { method: 'PUT', body: JSON.stringify(body) }),
+    resetDefaultPrompt: (key) => request(`/api/user-ai/default-prompts/${key}/reset`, { method: 'POST' }),
+
     // Duplicates
     getDuplicates: () => request('/api/duplicates'),
     resolveDuplicates: (body) => request('/api/duplicates/resolve', { method: 'POST', body: JSON.stringify(body) }),

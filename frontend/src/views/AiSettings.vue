@@ -25,6 +25,17 @@ const loadingModelsId = ref(null)
 // 用户被授权使用管理员 AI 时的配置信息
 const adminConfig = ref({ authorized: false, providers: [] })
 
+// 提示词管理
+const prompts = ref({})
+const defaultPrompts = ref({})
+const showPromptEditor = ref(false)
+const editingPromptKey = ref('')
+const editingPrompt = ref({ system_prompt: '', user_prompt: '' })
+const editingIsDefault = ref(false) // 是否编辑的是管理员默认提示词
+const promptLabels = {
+  analyze: { name: 'AI 校验答案', desc: '用于题目详情页和刷题页的 AI 校验功能' }
+}
+
 // AI timeout setting (seconds)
 const aiTimeout = ref(parseInt(localStorage.getItem('ai_timeout') || '120'))
 
@@ -45,10 +56,11 @@ const form = reactive({
 
 onMounted(async () => {
   if (isAdmin.value) {
-    await Promise.all([loadProviders(), loadPresets()])
+    await Promise.all([loadProviders(), loadPresets(), loadDefaultPrompts()])
   } else {
     await Promise.all([loadUserProviders(), loadPresets(), loadAdminConfig()])
   }
+  await loadPrompts()
   loading.value = false
 })
 
@@ -62,6 +74,66 @@ async function loadUserProviders() {
 
 async function loadAdminConfig() {
   try { adminConfig.value = await api.getUserAiAdminConfig() } catch {}
+}
+
+async function loadPrompts() {
+  try { prompts.value = await api.getUserAiPrompts() } catch {}
+}
+
+async function loadDefaultPrompts() {
+  try { defaultPrompts.value = await api.getDefaultPrompts() } catch {}
+}
+
+function openPromptEditor(key, isDefault = false) {
+  editingPromptKey.value = key
+  editingIsDefault.value = isDefault
+  if (isDefault) {
+    editingPrompt.value = {
+      system_prompt: defaultPrompts.value[key]?.system_prompt || '',
+      user_prompt: defaultPrompts.value[key]?.user_prompt || ''
+    }
+  } else {
+    editingPrompt.value = {
+      system_prompt: prompts.value[key]?.system_prompt || '',
+      user_prompt: prompts.value[key]?.user_prompt || ''
+    }
+  }
+  showPromptEditor.value = true
+}
+
+function closePromptEditor() {
+  showPromptEditor.value = false
+  editingPromptKey.value = ''
+  editingIsDefault.value = false
+}
+
+async function savePrompt() {
+  try {
+    if (editingIsDefault.value) {
+      await api.updateDefaultPrompt(editingPromptKey.value, editingPrompt.value)
+      toast.success('默认提示词已更新')
+      await loadDefaultPrompts()
+    } else {
+      await api.updateUserAiPrompt(editingPromptKey.value, editingPrompt.value)
+      toast.success('提示词已保存')
+    }
+    closePromptEditor()
+    await loadPrompts()
+  } catch {}
+}
+
+async function resetPrompt(key, isDefault = false) {
+  try {
+    if (isDefault) {
+      await api.resetDefaultPrompt(key)
+      toast.success('已恢复系统内置提示词')
+      await loadDefaultPrompts()
+    } else {
+      await api.resetUserAiPrompt(key)
+      toast.success('已恢复默认提示词')
+    }
+    await loadPrompts()
+  } catch {}
 }
 
 async function loadPresets() {
@@ -465,6 +537,82 @@ function cancelModelPicker() {
       </div>
     </div>
 
+    <!-- 提示词管理 -->
+    <div class="mt-8">
+      <h2 class="text-lg font-semibold text-notion-text dark:text-notion-text-dark mb-4">提示词管理</h2>
+
+      <!-- 管理员：默认提示词配置 -->
+      <div v-if="isAdmin" class="mb-6">
+        <h3 class="text-sm font-medium text-notion-muted dark:text-notion-muted-dark mb-3">全局默认提示词</h3>
+        <p class="text-xs text-notion-muted dark:text-notion-muted-dark mb-3">修改后将影响所有未自定义提示词的用户</p>
+        <div class="space-y-3">
+          <div
+            v-for="(info, key) in promptLabels"
+            :key="'default-' + key"
+            class="card border-l-4 border-blue-400"
+          >
+            <div class="flex items-start justify-between">
+              <div>
+                <div class="flex items-center gap-2 mb-1">
+                  <h4 class="text-sm font-semibold text-notion-text dark:text-notion-text-dark">{{ info.name }}</h4>
+                </div>
+                <p class="text-xs text-notion-muted dark:text-notion-muted-dark line-clamp-1">
+                  {{ defaultPrompts[key]?.user_prompt?.substring(0, 80) }}...
+                </p>
+              </div>
+              <div class="flex items-center gap-2 flex-shrink-0">
+                <button @click="openPromptEditor(key, true)" class="btn-secondary text-xs py-1 px-2">
+                  编辑
+                </button>
+                <button @click="resetPrompt(key, true)" class="btn-secondary text-xs py-1 px-2">
+                  恢复内置
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 用户：个人提示词配置 -->
+      <div>
+        <h3 v-if="isAdmin" class="text-sm font-medium text-notion-muted dark:text-notion-muted-dark mb-3">我的提示词</h3>
+        <p v-if="isAdmin" class="text-xs text-notion-muted dark:text-notion-muted-dark mb-3">自定义您个人的提示词，优先级高于全局默认</p>
+        <div class="space-y-3">
+          <div
+            v-for="(info, key) in promptLabels"
+            :key="'user-' + key"
+            class="card"
+          >
+            <div class="flex items-start justify-between">
+              <div>
+                <div class="flex items-center gap-2 mb-1">
+                  <h4 class="text-sm font-semibold text-notion-text dark:text-notion-text-dark">{{ info.name }}</h4>
+                  <span v-if="prompts[key]?.is_custom" class="badge bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 text-[10px]">已自定义</span>
+                  <span v-else class="badge bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400 text-[10px]">使用默认</span>
+                </div>
+                <p class="text-xs text-notion-muted dark:text-notion-muted-dark">{{ info.desc }}</p>
+                <p class="text-xs text-notion-muted dark:text-notion-muted-dark mt-1 line-clamp-1">
+                  {{ prompts[key]?.user_prompt?.substring(0, 80) }}...
+                </p>
+              </div>
+              <div class="flex items-center gap-2 flex-shrink-0">
+                <button @click="openPromptEditor(key, false)" class="btn-secondary text-xs py-1 px-2">
+                  编辑
+                </button>
+                <button
+                  v-if="prompts[key]?.is_custom"
+                  @click="resetPrompt(key, false)"
+                  class="btn-secondary text-xs py-1 px-2"
+                >
+                  恢复默认
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Add/Edit Form Modal -->
     <Teleport to="body">
       <div v-if="showForm" class="fixed inset-0 z-[9997] flex items-center justify-center p-4">
@@ -538,6 +686,73 @@ function cancelModelPicker() {
           </div>
           <div class="px-6 py-3 border-t border-notion-border dark:border-notion-border-dark flex justify-end">
             <button @click="cancelModelPicker" class="btn-secondary text-sm">取消</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- Prompt Editor Modal -->
+    <Teleport to="body">
+      <div v-if="showPromptEditor" class="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/50" @click="closePromptEditor" />
+        <div class="relative bg-white dark:bg-gray-800 rounded-card shadow-xl border border-notion-border dark:border-notion-border-dark w-full max-w-2xl max-h-[90vh] flex flex-col">
+          <!-- Header -->
+          <div class="flex-shrink-0 px-6 py-4 border-b border-notion-border dark:border-notion-border-dark flex items-center justify-between">
+            <div>
+              <h2 class="text-lg font-semibold text-notion-text dark:text-notion-text-dark">
+                {{ editingIsDefault ? '编辑默认提示词' : '编辑我的提示词' }} - {{ promptLabels[editingPromptKey]?.name }}
+              </h2>
+              <p class="text-xs text-notion-muted dark:text-notion-muted-dark mt-1">
+                {{ editingIsDefault ? '修改后将影响所有未自定义提示词的用户' : '自定义您个人的 AI 提示词' }}
+              </p>
+            </div>
+            <button @click="closePromptEditor" class="p-1 rounded-btn hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+              <svg class="w-5 h-5 text-notion-muted dark:text-notion-muted-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+          <!-- Content -->
+          <div class="flex-1 overflow-y-auto p-6 space-y-5">
+            <div>
+              <label class="block text-sm font-medium text-notion-text dark:text-notion-text-dark mb-1.5">系统提示词</label>
+              <textarea
+                v-model="editingPrompt.system_prompt"
+                rows="3"
+                class="input-field w-full font-mono text-xs"
+                placeholder="系统提示词..."
+              ></textarea>
+              <p class="text-xs text-notion-muted dark:text-notion-muted-dark mt-1">定义 AI 的角色和基本行为</p>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-notion-text dark:text-notion-text-dark mb-1.5">用户提示词</label>
+              <textarea
+                v-model="editingPrompt.user_prompt"
+                rows="10"
+                class="input-field w-full font-mono text-xs"
+                placeholder="用户提示词..."
+              ></textarea>
+              <p class="text-xs text-notion-muted dark:text-notion-muted-dark mt-1">实际发送给 AI 的提示词模板</p>
+            </div>
+            <div class="p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+              <p class="text-xs font-medium text-notion-text dark:text-notion-text-dark mb-2">💡 可用变量：</p>
+              <div class="flex flex-wrap gap-2">
+                <code class="px-2 py-1 rounded bg-white dark:bg-gray-700 text-xs font-mono text-purple-600 dark:text-purple-400">{type}</code>
+                <code class="px-2 py-1 rounded bg-white dark:bg-gray-700 text-xs font-mono text-purple-600 dark:text-purple-400">{content}</code>
+                <code class="px-2 py-1 rounded bg-white dark:bg-gray-700 text-xs font-mono text-purple-600 dark:text-purple-400">{options}</code>
+                <code class="px-2 py-1 rounded bg-white dark:bg-gray-700 text-xs font-mono text-purple-600 dark:text-purple-400">{category}</code>
+              </div>
+            </div>
+          </div>
+          <!-- Footer -->
+          <div class="flex-shrink-0 px-6 py-4 border-t border-notion-border dark:border-notion-border-dark flex justify-between">
+            <button @click="resetPrompt(editingPromptKey, editingIsDefault); closePromptEditor()" class="btn-secondary text-sm">
+              {{ editingIsDefault ? '恢复系统内置' : '恢复默认' }}
+            </button>
+            <div class="flex gap-3">
+              <button @click="closePromptEditor" class="btn-secondary text-sm">取消</button>
+              <button @click="savePrompt" class="btn-primary text-sm">保存</button>
+            </div>
           </div>
         </div>
       </div>

@@ -130,6 +130,20 @@ db.exec(`
 
   CREATE INDEX IF NOT EXISTS idx_user_ai_providers_user ON user_ai_providers(user_id);
 
+  CREATE TABLE IF NOT EXISTS user_ai_prompts (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id       INTEGER NOT NULL,
+    prompt_key    TEXT NOT NULL,
+    system_prompt TEXT,
+    user_prompt   TEXT,
+    created_at    DATETIME,
+    updated_at    DATETIME,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE(user_id, prompt_key)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_user_ai_prompts_user ON user_ai_prompts(user_id);
+
   CREATE TABLE IF NOT EXISTS site_settings (
     key         TEXT PRIMARY KEY,
     value       TEXT,

@@ -224,16 +224,14 @@ module.exports = function (getDb, { md5, sendError, localNow, extractImageUrls, 
       if (!provider) return res.status(400).json({ error: '请先配置 AI 服务商' });
       if (!provider.model) return res.status(400).json({ error: '请先为该服务商选择模型' });
 
-      let prompt = `你是一个专业的答题助手。请分析以下题目，给出简要解析和正确答案。
+      // 默认提示词
+      let systemPrompt = '你是一个答题助手，只输出JSON格式的结果。';
+      let userPromptTemplate = `你是一个专业的答题助手。请分析以下题目，给出简要解析和正确答案。
 
-题型：${type}
-题目：${content}`;
-
-      if (options && options.length > 0 && ['单选题', '多选题', '判断题'].includes(type)) {
-        prompt += `\n选项：${options.map((o, i) => `${String.fromCharCode(65 + i)}. ${o}`).join(' ')}`;
-      }
-
-      prompt += `
+题型：{type}
+题目：{content}
+选项：{options}
+分类：{category}
 
 要求：
 1. 给出简要解析（不超过200字）
@@ -246,10 +244,54 @@ module.exports = function (getDb, { md5, sendError, localNow, extractImageUrls, 
 注意：
 - 单选题和判断题 answer 数组只有1个元素，多选题 answer 数组有多个元素
 - 填空题和简答题 answer 数组只有1个元素，为答案文本
-- **必须返回选项的完整文本内容，不要返回字母编号**
-  例如：选项为"A. 北京  B. 上海  C. 广州"，正确答案是B，则answer应为["上海"]，不要返回["B"]
-- 答案中不要使用双引号（"），如果必须引用请用单引号（'）
+- 必须返回选项的完整文本内容，不要返回字母编号
+- 答案中不要使用双引号，如果必须引用请用单引号
 - 不要输出JSON以外的任何内容`;
+
+      // 读取管理员配置的默认提示词
+      try {
+        const adminPromptsRow = db.prepare("SELECT value FROM site_settings WHERE key = 'default_ai_prompts'").get();
+        if (adminPromptsRow?.value) {
+          const adminPrompts = JSON.parse(adminPromptsRow.value);
+          if (adminPrompts.analyze) {
+            if (adminPrompts.analyze.system) systemPrompt = adminPrompts.analyze.system;
+            if (adminPrompts.analyze.user) userPromptTemplate = adminPrompts.analyze.user;
+          }
+        }
+      } catch {}
+
+      // 读取用户自定义提示词（优先级最高）
+      if (userId) {
+        try {
+          const userPrompt = db.prepare(
+            'SELECT system_prompt, user_prompt FROM user_ai_prompts WHERE user_id = ? AND prompt_key = ?'
+          ).get(userId, 'analyze');
+          if (userPrompt) {
+            if (userPrompt.system_prompt) systemPrompt = userPrompt.system_prompt;
+            if (userPrompt.user_prompt) userPromptTemplate = userPrompt.user_prompt;
+          }
+        } catch {}
+      }
+
+      // 变量替换
+      const optionsStr = options && options.length > 0 && ['单选题', '多选题', '判断题'].includes(type)
+        ? options.map((o, i) => `${String.fromCharCode(65 + i)}. ${o}`).join(' ')
+        : '';
+
+      // 查找题目分类（只取下划线前的分类名，去除导入来源）
+      let category = '';
+      try {
+        const question = db.prepare('SELECT category FROM data_questions WHERE content = ? AND type = ? AND deleted_at IS NULL LIMIT 1').get(content, type);
+        const rawCategory = question?.category || '默认';
+        // 如果分类名包含下划线，只取第一部分作为题库分类名
+        category = rawCategory.includes('_') ? rawCategory.split('_')[0] : rawCategory;
+      } catch { category = '默认'; }
+
+      let prompt = userPromptTemplate
+        .replace(/\{type\}/g, type)
+        .replace(/\{content\}/g, content)
+        .replace(/\{options\}/g, optionsStr)
+        .replace(/\{category\}/g, category);
 
       const url = provider.base_url.replace(/\/+$/, '') + '/chat/completions';
       const controller = new AbortController();
@@ -273,7 +315,7 @@ module.exports = function (getDb, { md5, sendError, localNow, extractImageUrls, 
           body: JSON.stringify({
             model: provider.model,
             messages: [
-              { role: 'system', content: '你是一个答题助手，只输出JSON格式的结果。' },
+              { role: 'system', content: systemPrompt },
               { role: 'user', content: userContent },
             ],
             temperature: 0.1,

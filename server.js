@@ -91,6 +91,23 @@ function initDatabase(db) {
   // Migration: add enabled column to user_ai_providers
   try { db.exec(`ALTER TABLE user_ai_providers ADD COLUMN enabled INTEGER DEFAULT 1`); } catch {}
 
+  // Ensure user_ai_prompts table exists
+  try {
+    db.exec(`CREATE TABLE IF NOT EXISTS user_ai_prompts (
+      id            INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id       INTEGER NOT NULL,
+      prompt_key    TEXT NOT NULL,
+      system_prompt TEXT,
+      user_prompt   TEXT,
+      created_at    DATETIME,
+      updated_at    DATETIME,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      UNIQUE(user_id, prompt_key)
+    )`);
+  } catch {}
+
+  try { db.exec(`CREATE INDEX IF NOT EXISTS idx_user_ai_prompts_user ON user_ai_prompts(user_id)`); } catch {}
+
   // Ensure data_categories table exists WITH score column
   try {
     db.exec(`CREATE TABLE IF NOT EXISTS data_categories (

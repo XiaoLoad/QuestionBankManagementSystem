@@ -215,5 +215,252 @@ module.exports = function (getDb, { sendError, localNow }, auth) {
     } catch (err) { sendError(res, err, 'GET /api/user-ai/admin-config'); }
   });
 
+  // ========== 提示词管理 ==========
+
+  // 默认提示词
+  const DEFAULT_PROMPTS = {
+    analyze: {
+      system: '你是一个答题助手，只输出JSON格式的结果。',
+      user: `你是一个专业的答题助手。请分析以下题目，给出简要解析和正确答案。
+
+题型：{type}
+题目：{content}
+选项：{options}
+分类：{category}
+
+要求：
+1. 给出简要解析（不超过200字）
+2. 给出正确答案
+3. 严格按照以下JSON格式输出，不要输出其他任何内容
+
+输出格式：
+{"analysis":"解析内容","answer":["答案1"]}
+
+注意：
+- 单选题和判断题 answer 数组只有1个元素，多选题 answer 数组有多个元素
+- 填空题和简答题 answer 数组只有1个元素，为答案文本
+- 必须返回选项的完整文本内容，不要返回字母编号
+- 答案中不要使用双引号，如果必须引用请用单引号
+- 不要输出JSON以外的任何内容`
+    }
+  };
+
+  // 获取管理员配置的默认提示词（从数据库）
+  function getAdminDefaultPrompts(db) {
+    const result = { ...DEFAULT_PROMPTS };
+    try {
+      const row = db.prepare("SELECT value FROM site_settings WHERE key = 'default_ai_prompts'").get();
+      if (row?.value) {
+        const adminPrompts = JSON.parse(row.value);
+        for (const key of Object.keys(adminPrompts)) {
+          if (result[key]) {
+            result[key] = {
+              system: adminPrompts[key].system || result[key].system,
+              user: adminPrompts[key].user || result[key].user,
+            };
+          }
+        }
+      }
+    } catch {}
+    return result;
+  }
+
+  /**
+   * GET /api/user-ai/prompts
+   * 获取当前用户的所有提示词
+   */
+  router.get('/prompts', (req, res) => {
+    try {
+      const db = getDb();
+      const adminDefaults = getAdminDefaultPrompts(db);
+      const rows = db.prepare(
+        'SELECT prompt_key, system_prompt, user_prompt FROM user_ai_prompts WHERE user_id = ?'
+      ).all(req.user.id);
+
+      const result = {};
+      for (const key of Object.keys(adminDefaults)) {
+        const custom = rows.find(r => r.prompt_key === key);
+        result[key] = {
+          system_prompt: custom?.system_prompt || adminDefaults[key].system,
+          user_prompt: custom?.user_prompt || adminDefaults[key].user,
+          is_custom: !!custom,
+        };
+      }
+
+      res.json(result);
+    } catch (err) { sendError(res, err, 'GET /api/user-ai/prompts'); }
+  });
+
+  /**
+   * GET /api/user-ai/default-prompts
+   * 获取管理员配置的默认提示词（仅管理员）
+   */
+  router.get('/default-prompts', auth.adminRequired, (req, res) => {
+    try {
+      const db = getDb();
+      const adminDefaults = getAdminDefaultPrompts(db);
+
+      const result = {};
+      for (const key of Object.keys(adminDefaults)) {
+        result[key] = {
+          system_prompt: adminDefaults[key].system,
+          user_prompt: adminDefaults[key].user,
+        };
+      }
+
+      res.json(result);
+    } catch (err) { sendError(res, err, 'GET /api/user-ai/default-prompts'); }
+  });
+
+  /**
+   * PUT /api/user-ai/default-prompts/:key
+   * 更新管理员默认提示词（仅管理员）
+   */
+  router.put('/default-prompts/:key', auth.adminRequired, (req, res) => {
+    try {
+      const db = getDb();
+      const { key } = req.params;
+      const { system_prompt, user_prompt } = req.body;
+
+      if (!DEFAULT_PROMPTS[key]) {
+        return res.status(404).json({ error: '提示词类型不存在' });
+      }
+
+      // 读取现有配置
+      let adminPrompts = {};
+      try {
+        const row = db.prepare("SELECT value FROM site_settings WHERE key = 'default_ai_prompts'").get();
+        if (row?.value) adminPrompts = JSON.parse(row.value);
+      } catch {}
+
+      // 更新
+      adminPrompts[key] = {
+        system: system_prompt || DEFAULT_PROMPTS[key].system,
+        user: user_prompt || DEFAULT_PROMPTS[key].user,
+      };
+
+      // 保存
+      const now = localNow();
+      db.prepare(`
+        INSERT INTO site_settings (key, value, updated_at) VALUES (?, ?, ?)
+        ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
+      `).run('default_ai_prompts', JSON.stringify(adminPrompts), now);
+
+      res.json({ message: '默认提示词已更新' });
+    } catch (err) { sendError(res, err, 'PUT /api/user-ai/default-prompts/:key'); }
+  });
+
+  /**
+   * POST /api/user-ai/default-prompts/:key/reset
+   * 恢复管理员默认提示词为系统内置（仅管理员）
+   */
+  router.post('/default-prompts/:key/reset', auth.adminRequired, (req, res) => {
+    try {
+      const db = getDb();
+      const { key } = req.params;
+
+      if (!DEFAULT_PROMPTS[key]) {
+        return res.status(404).json({ error: '提示词类型不存在' });
+      }
+
+      // 读取现有配置
+      let adminPrompts = {};
+      try {
+        const row = db.prepare("SELECT value FROM site_settings WHERE key = 'default_ai_prompts'").get();
+        if (row?.value) adminPrompts = JSON.parse(row.value);
+      } catch {}
+
+      // 删除该 key
+      delete adminPrompts[key];
+
+      // 保存
+      const now = localNow();
+      if (Object.keys(adminPrompts).length === 0) {
+        db.prepare("DELETE FROM site_settings WHERE key = 'default_ai_prompts'").run();
+      } else {
+        db.prepare(`
+          INSERT INTO site_settings (key, value, updated_at) VALUES (?, ?, ?)
+          ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
+        `).run('default_ai_prompts', JSON.stringify(adminPrompts), now);
+      }
+
+      res.json({ message: '已恢复系统内置提示词' });
+    } catch (err) { sendError(res, err, 'POST /api/user-ai/default-prompts/:key/reset'); }
+  });
+
+  /**
+   * GET /api/user-ai/prompts/:key
+   * 获取指定提示词
+   */
+  router.get('/prompts/:key', (req, res) => {
+    try {
+      const db = getDb();
+      const { key } = req.params;
+
+      if (!DEFAULT_PROMPTS[key]) {
+        return res.status(404).json({ error: '提示词类型不存在' });
+      }
+
+      const row = db.prepare(
+        'SELECT system_prompt, user_prompt FROM user_ai_prompts WHERE user_id = ? AND prompt_key = ?'
+      ).get(req.user.id, key);
+
+      res.json({
+        system_prompt: row?.system_prompt || DEFAULT_PROMPTS[key].system,
+        user_prompt: row?.user_prompt || DEFAULT_PROMPTS[key].user,
+        is_custom: !!row,
+      });
+    } catch (err) { sendError(res, err, 'GET /api/user-ai/prompts/:key'); }
+  });
+
+  /**
+   * PUT /api/user-ai/prompts/:key
+   * 更新指定提示词
+   */
+  router.put('/prompts/:key', (req, res) => {
+    try {
+      const db = getDb();
+      const { key } = req.params;
+      const { system_prompt, user_prompt } = req.body;
+
+      if (!DEFAULT_PROMPTS[key]) {
+        return res.status(404).json({ error: '提示词类型不存在' });
+      }
+
+      const now = localNow();
+      db.prepare(`
+        INSERT INTO user_ai_prompts (user_id, prompt_key, system_prompt, user_prompt, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+        ON CONFLICT(user_id, prompt_key) DO UPDATE SET
+          system_prompt = excluded.system_prompt,
+          user_prompt = excluded.user_prompt,
+          updated_at = excluded.updated_at
+      `).run(req.user.id, key, system_prompt || '', user_prompt || '', now, now);
+
+      res.json({ message: '提示词已更新' });
+    } catch (err) { sendError(res, err, 'PUT /api/user-ai/prompts/:key'); }
+  });
+
+  /**
+   * POST /api/user-ai/prompts/:key/reset
+   * 恢复默认提示词
+   */
+  router.post('/prompts/:key/reset', (req, res) => {
+    try {
+      const db = getDb();
+      const { key } = req.params;
+
+      if (!DEFAULT_PROMPTS[key]) {
+        return res.status(404).json({ error: '提示词类型不存在' });
+      }
+
+      db.prepare(
+        'DELETE FROM user_ai_prompts WHERE user_id = ? AND prompt_key = ?'
+      ).run(req.user.id, key);
+
+      res.json({ message: '已恢复默认提示词' });
+    } catch (err) { sendError(res, err, 'POST /api/user-ai/prompts/:key/reset'); }
+  });
+
   return router;
 };
