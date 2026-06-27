@@ -1278,57 +1278,41 @@ function getBoolClass(val) {
     </template>
 
     <!-- Result -->
-    <div v-if="state === 'result'" class="card max-w-2xl">
+    <div v-if="state === 'result'" class="card w-full">
       <h2
         class="text-base sm:text-lg font-semibold text-notion-text dark:text-notion-text-dark mb-4 sm:mb-6"
       >
         练习结果
       </h2>
 
-      <div class="grid grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
-        <div
-          class="text-center p-3 sm:p-4 rounded-btn bg-notion-surface dark:bg-notion-surface-dark"
-        >
-          <p
-            class="text-xl sm:text-2xl font-bold text-notion-text dark:text-notion-text-dark"
-          >
+      <div class="grid grid-cols-3 gap-2 sm:gap-4 mb-4 sm:mb-6">
+        <div class="text-center p-4 sm:p-6 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+          <p class="text-2xl sm:text-3xl font-bold text-notion-text dark:text-notion-text-dark">
             {{ questions.length }}
           </p>
-          <p class="text-xs text-notion-muted dark:text-notion-muted-dark">
+          <p class="text-xs sm:text-sm text-notion-muted dark:text-notion-muted-dark mt-1">
             总题数
           </p>
         </div>
-        <div
-          class="text-center p-3 sm:p-4 rounded-btn bg-green-50 dark:bg-green-900/20"
-        >
-          <p
-            class="text-xl sm:text-2xl font-bold text-green-600 dark:text-green-400"
-          >
+        <div class="text-center p-4 sm:p-6 rounded-lg bg-green-50 dark:bg-green-900/20">
+          <p class="text-2xl sm:text-3xl font-bold text-green-600 dark:text-green-400">
             {{ correctCount }}
           </p>
-          <p class="text-xs text-notion-muted dark:text-notion-muted-dark">
+          <p class="text-xs sm:text-sm text-notion-muted dark:text-notion-muted-dark mt-1">
             正确
           </p>
         </div>
         <div
-          class="text-center p-3 sm:p-4 rounded-btn"
-          :class="
-            accuracy >= 60
-              ? 'bg-green-50 dark:bg-green-900/20'
-              : 'bg-red-50 dark:bg-red-900/20'
-          "
+          class="text-center p-4 sm:p-6 rounded-lg"
+          :class="accuracy >= 60 ? 'bg-green-50 dark:bg-green-900/20' : 'bg-red-50 dark:bg-red-900/20'"
         >
           <p
-            class="text-xl sm:text-2xl font-bold"
-            :class="
-              accuracy >= 60
-                ? 'text-green-600 dark:text-green-400'
-                : 'text-red-600 dark:text-red-400'
-            "
+            class="text-2xl sm:text-3xl font-bold"
+            :class="accuracy >= 60 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'"
           >
             {{ accuracy }}%
           </p>
-          <p class="text-xs text-notion-muted dark:text-notion-muted-dark">
+          <p class="text-xs sm:text-sm text-notion-muted dark:text-notion-muted-dark mt-1">
             正确率
           </p>
         </div>
@@ -1336,49 +1320,49 @@ function getBoolClass(val) {
 
       <!-- Wrong list -->
       <div v-if="wrongList.length > 0" class="mb-4 sm:mb-6">
-        <h3
-          class="text-xs sm:text-sm font-medium text-notion-text dark:text-notion-text-dark mb-2 sm:mb-3"
-        >
-          错题列表（{{ wrongList.length }} 题）
+        <h3 class="text-sm sm:text-base font-medium text-notion-text dark:text-notion-text-dark mb-3">
+          错题回顾（{{ wrongList.length }} 题）
         </h3>
-        <div class="space-y-2 max-h-48 sm:max-h-60 overflow-y-auto">
+        <div class="rounded-lg bg-red-50/50 dark:bg-red-900/10 overflow-hidden max-h-64 sm:max-h-80 overflow-y-auto">
           <div
             v-for="(r, i) in wrongList"
             :key="i"
-            class="p-2.5 sm:p-3 rounded-btn bg-red-50/50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30"
+            class="p-3 sm:p-4"
+            :class="i < wrongList.length - 1 ? 'border-b border-red-100 dark:border-red-900/30' : ''"
           >
-            <div class="flex items-center gap-1.5 sm:gap-2 mb-1">
-              <span class="badge badge-type text-xs">{{ r.type }}</span>
+            <div class="flex items-start gap-2 mb-2">
+              <span class="flex-shrink-0 w-5 h-5 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-xs flex items-center justify-center font-medium">
+                {{ i + 1 }}
+              </span>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-1.5 mb-1">
+                  <span class="badge badge-type text-[10px]">{{ r.type }}</span>
+                </div>
+                <p class="text-xs sm:text-sm text-notion-text dark:text-notion-text-dark line-clamp-2">
+                  {{ r.content }}
+                </p>
+              </div>
             </div>
-            <p
-              class="text-xs sm:text-sm text-notion-text dark:text-notion-text-dark line-clamp-2"
-            >
-              {{ r.content }}
-            </p>
-            <div class="text-xs mt-1">
-              <span class="text-red-500"
-                >你的：{{
-                  Array.isArray(r.userAnswer)
-                    ? r.userAnswer.join("、")
-                    : r.userAnswer
-                }}</span
-              >
-              <span class="text-green-500 ml-2 sm:ml-3"
-                >正确：{{ r.correctAnswer?.join("、") }}</span
-              >
+            <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs ml-7">
+              <span class="text-red-600 dark:text-red-400">
+                ✗ {{ Array.isArray(r.userAnswer) ? r.userAnswer.join("、") : r.userAnswer }}
+              </span>
+              <span class="text-green-600 dark:text-green-400">
+                ✓ {{ r.correctAnswer?.join("、") }}
+              </span>
             </div>
           </div>
         </div>
       </div>
 
-      <div class="flex gap-2 sm:gap-3">
-        <button @click="restart" class="btn-secondary flex-1 py-2.5">
+      <div class="flex flex-col sm:flex-row gap-2 sm:gap-3 sm:justify-center">
+        <button @click="restart" class="btn-secondary py-3 sm:py-2.5 sm:px-8">
           返回设置
         </button>
         <button
           v-if="wrongList.length > 0"
           @click="retryWrong"
-          class="btn-primary flex-1 py-2.5"
+          class="btn-primary py-3 sm:py-2.5 sm:px-8"
         >
           错题重练 ({{ wrongList.length }})
         </button>
