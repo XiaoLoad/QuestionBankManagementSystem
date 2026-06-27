@@ -346,59 +346,23 @@ function cancelModelPicker() {
     </div>
 
     <!-- 管理员 AI 配置展示（仅普通用户且被授权时显示） -->
-    <div v-if="!isAdmin && adminConfig.authorized" class="card mb-6 border-l-4 border-blue-400">
-      <div class="flex items-center gap-3 mb-3">
-        <div class="w-8 h-8 rounded-btn flex items-center justify-center bg-blue-50 dark:bg-blue-900/20">
-          <svg class="w-4 h-4 text-blue-500 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-          </svg>
-        </div>
-        <div>
-          <h3 class="text-sm font-semibold text-notion-text dark:text-notion-text-dark">管理员 AI 配置（已授权使用）</h3>
-          <p class="text-xs text-notion-muted dark:text-notion-muted-dark">您已被授权使用管理员的 AI 配置，如需使用自己的配置请在下方添加</p>
-        </div>
-      </div>
-      <div v-if="adminConfig.providers.length > 0" class="space-y-2">
-        <div
-          v-for="p in adminConfig.providers"
-          :key="p.name"
-          class="flex items-center gap-3 p-2 rounded bg-gray-50 dark:bg-gray-800/50"
-        >
-          <div class="flex-1">
-            <div class="flex items-center gap-2">
-              <span class="text-sm font-medium text-notion-text dark:text-notion-text-dark">{{ p.name }}</span>
-              <span v-if="p.is_default" class="badge bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 text-[10px]">默认</span>
-            </div>
-            <p class="text-xs text-notion-muted dark:text-notion-muted-dark font-mono">{{ p.base_url }}</p>
-          </div>
-          <div class="text-right">
-            <p class="text-xs text-notion-muted dark:text-notion-muted-dark">模型</p>
-            <p class="text-sm font-mono text-notion-text dark:text-notion-text-dark">{{ p.model || '未选择' }}</p>
-          </div>
-          <div class="text-right">
-            <p class="text-xs text-notion-muted dark:text-notion-muted-dark">API Key</p>
-            <p class="text-sm font-mono text-notion-text dark:text-notion-text-dark">****</p>
-          </div>
-        </div>
-      </div>
-      <div v-else class="text-sm text-notion-muted dark:text-notion-muted-dark">
-        管理员暂未配置 AI 服务商
-      </div>
+    <div v-if="!isAdmin && adminConfig.authorized" class="flex items-center gap-2 px-3 py-2 mb-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300">
+      <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+      </svg>
+      <span class="text-xs">
+        已授权使用管理员 AI：
+        <span class="font-medium">{{ adminConfig.providers.map(p => p.name).join('、') || '暂未配置' }}</span>
+        <span v-if="adminConfig.providers.some(p => p.model)" class="opacity-75">（{{ adminConfig.providers.find(p => p.model)?.model }}）</span>
+      </span>
     </div>
 
     <!-- 未授权提示（仅普通用户且未被授权时显示） -->
-    <div v-if="!isAdmin && !adminConfig.authorized" class="card mb-6 border-l-4 border-amber-400">
-      <div class="flex items-center gap-3">
-        <div class="w-8 h-8 rounded-btn flex items-center justify-center bg-amber-50 dark:bg-amber-900/20">
-          <svg class="w-4 h-4 text-amber-500 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/>
-          </svg>
-        </div>
-        <div>
-          <p class="text-sm text-notion-text dark:text-notion-text-dark">您尚未被授权使用管理员的 AI 配置</p>
-          <p class="text-xs text-notion-muted dark:text-notion-muted-dark mt-0.5">请添加自己的 AI 服务商以使用 AI 校验功能</p>
-        </div>
-      </div>
+    <div v-if="!isAdmin && !adminConfig.authorized" class="flex items-center gap-2 px-3 py-2 mb-4 rounded-lg bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300">
+      <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+      </svg>
+      <span class="text-xs">未授权使用管理员 AI，请添加自己的服务商</span>
     </div>
 
     <!-- Timeout setting -->
@@ -453,86 +417,67 @@ function cancelModelPicker() {
     </div>
 
     <!-- Provider list -->
-    <div v-else class="space-y-4">
+    <div v-else class="max-h-[400px] overflow-y-auto space-y-2 pr-1">
       <div
         v-for="p in providers"
         :key="p.id"
-        class="card"
+        class="card py-3"
       >
-        <div class="flex items-start justify-between mb-3">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-btn flex items-center justify-center"
-              :class="p.is_default ? 'bg-notion-accent/10 dark:bg-notion-accent-dark/15' : 'bg-gray-100 dark:bg-gray-700'"
-            >
-              <svg class="w-5 h-5" :class="p.is_default ? 'text-notion-accent dark:text-notion-accent-dark' : 'text-notion-muted dark:text-notion-muted-dark'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5"/>
-              </svg>
-            </div>
-            <div>
-              <div class="flex items-center gap-2">
-                <h3 class="text-base font-semibold text-notion-text dark:text-notion-text-dark">{{ p.name }}</h3>
-                <span v-if="p.is_default" class="badge bg-notion-accent/10 text-notion-accent dark:bg-notion-accent-dark/15 dark:text-notion-accent-dark text-[10px]">默认</span>
-                <span v-if="!p.enabled" class="badge bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400 text-[10px]">已停用</span>
-              </div>
-              <p class="text-xs text-notion-muted dark:text-notion-muted-dark mt-0.5 font-mono">{{ p.base_url }}</p>
-            </div>
-          </div>
-          <!-- 启用/停用开关 -->
-          <button
-            @click="toggleEnabled(p)"
-            :class="[
-              'relative w-11 h-6 rounded-full transition-colors flex-shrink-0',
-              p.enabled ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'
-            ]"
-            :title="p.enabled ? '点击停用' : '点击启用'"
+        <div class="flex items-center gap-3">
+          <!-- Icon -->
+          <div class="w-8 h-8 rounded flex items-center justify-center flex-shrink-0"
+            :class="p.is_default ? 'bg-notion-accent/10 dark:bg-notion-accent-dark/15' : 'bg-gray-100 dark:bg-gray-700'"
           >
-            <span
+            <svg class="w-4 h-4" :class="p.is_default ? 'text-notion-accent dark:text-notion-accent-dark' : 'text-notion-muted dark:text-notion-muted-dark'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5"/>
+            </svg>
+          </div>
+
+          <!-- Info -->
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <span class="text-sm font-semibold text-notion-text dark:text-notion-text-dark">{{ p.name }}</span>
+              <span v-if="p.model" class="text-xs text-notion-muted dark:text-notion-muted-dark font-mono">{{ p.model }}</span>
+              <span v-if="p.is_default" class="badge bg-notion-accent/10 text-notion-accent dark:bg-notion-accent-dark/15 dark:text-notion-accent-dark text-[10px] flex-shrink-0">默认</span>
+              <span v-if="!p.enabled" class="badge bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400 text-[10px] flex-shrink-0">停用</span>
+            </div>
+            <div class="flex items-center gap-2 mt-0.5">
+              <span class="text-[11px] text-notion-muted dark:text-notion-muted-dark font-mono truncate">{{ p.base_url }}</span>
+            </div>
+            <div class="flex items-center gap-2 mt-0.5">
+              <span class="text-[11px] text-notion-muted dark:text-notion-muted-dark font-mono">Key: {{ p.api_key_masked }}</span>
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div class="flex items-center gap-1 flex-shrink-0">
+            <!-- 启用/停用开关 -->
+            <button
+              @click="toggleEnabled(p)"
               :class="[
-                'absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform',
-                p.enabled ? 'translate-x-5' : 'translate-x-0'
+                'relative w-9 h-5 rounded-full transition-colors',
+                p.enabled ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'
               ]"
-            />
-          </button>
-        </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-          <div>
-            <label class="block text-xs font-medium text-notion-muted dark:text-notion-muted-dark mb-1">API Key</label>
-            <p class="text-sm text-notion-text dark:text-notion-text-dark font-mono">{{ p.api_key_masked }}</p>
+              :title="p.enabled ? '点击停用' : '点击启用'"
+            >
+              <span
+                :class="[
+                  'absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform',
+                  p.enabled ? 'translate-x-4' : 'translate-x-0'
+                ]"
+              />
+            </button>
+            <button @click="openEditForm(p)" class="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-notion-muted dark:text-notion-muted-dark transition-colors" title="编辑">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+              </svg>
+            </button>
+            <button @click="deleteProvider(p)" class="p-1.5 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-notion-muted dark:text-notion-muted-dark hover:text-red-500 transition-colors" title="删除">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+              </svg>
+            </button>
           </div>
-          <div>
-            <label class="block text-xs font-medium text-notion-muted dark:text-notion-muted-dark mb-1">当前模型</label>
-            <p class="text-sm text-notion-text dark:text-notion-text-dark">
-              <span v-if="p.model" class="font-mono">{{ p.model }}</span>
-              <span v-else class="text-notion-muted dark:text-notion-muted-dark italic">未选择</span>
-            </p>
-          </div>
-        </div>
-
-        <div class="flex flex-wrap items-center gap-2">
-          <button @click="testConnection(p)" :disabled="testingId === p.id" class="btn-secondary text-xs py-1.5 px-2 sm:px-3">
-            <svg v-if="testingId === p.id" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-            </svg>
-            {{ testingId === p.id ? '测试中...' : '测试' }}
-          </button>
-          <button @click="fetchModels(p)" :disabled="loadingModelsId === p.id" class="btn-secondary text-xs py-1.5 px-2 sm:px-3">
-            <svg v-if="loadingModelsId === p.id" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-            </svg>
-            {{ loadingModelsId === p.id ? '获取中...' : '模型列表' }}
-          </button>
-          <button v-if="!p.is_default" @click="setDefault(p)" class="btn-secondary text-xs py-1.5 px-2 sm:px-3">
-            设为默认
-          </button>
-          <button @click="openEditForm(p)" class="btn-secondary text-xs py-1.5 px-2 sm:px-3">
-            编辑
-          </button>
-          <button @click="deleteProvider(p)" class="btn-secondary text-xs py-1.5 px-2 sm:px-3 text-red-500 hover:text-red-600">
-            删除
-          </button>
         </div>
       </div>
     </div>
