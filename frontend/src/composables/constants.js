@@ -17,9 +17,9 @@ export const TYPE_ICONS = {
 }
 
 export const TYPE_CARD_COLORS = {
-  '单选题': 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400',
-  '多选题': 'bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400',
-  '判断题': 'bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400',
-  '填空题': 'bg-orange-50 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400',
-  '简答题': 'bg-orange-50 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400',
+  '单选题': 'bg-blue-50 border border-blue-200 text-blue-600 dark:bg-blue-900/30 dark:border-blue-800 dark:text-blue-400',
+  '多选题': 'bg-purple-50 border border-purple-200 text-purple-600 dark:bg-purple-900/30 dark:border-purple-800 dark:text-purple-400',
+  '判断题': 'bg-green-50 border border-green-200 text-green-600 dark:bg-green-900/30 dark:border-green-800 dark:text-green-400',
+  '填空题': 'bg-orange-50 border border-orange-200 text-orange-600 dark:bg-orange-900/30 dark:border-orange-800 dark:text-orange-400',
+  '简答题': 'bg-orange-50 border border-orange-200 text-orange-600 dark:bg-orange-900/30 dark:border-orange-800 dark:text-orange-400',
 }

@@ -74,6 +74,9 @@
 .border-accent {
   border-color: var(--theme-accent);
 }
+.border-accent-20 {
+  border-color: color-mix(in srgb, var(--theme-accent) 20%, transparent);
+}
 
 /* Toast animation */
 @keyframes toast-in {

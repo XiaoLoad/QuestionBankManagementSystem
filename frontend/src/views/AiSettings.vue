@@ -368,7 +368,7 @@ function cancelModelPicker() {
     <!-- Timeout setting -->
     <div class="card mb-6">
       <div class="flex items-center gap-3 mb-3">
-        <div class="w-8 h-8 rounded-btn flex items-center justify-center bg-gray-100 dark:bg-gray-700">
+        <div class="w-8 h-8 rounded-btn flex items-center justify-center bg-gray-100 border border-gray-200 dark:bg-gray-700 dark:border-gray-600">
           <svg class="w-4 h-4 text-notion-muted dark:text-notion-muted-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
           </svg>
@@ -426,8 +426,8 @@ function cancelModelPicker() {
         <!-- 第一行：信息区 -->
         <div class="flex items-start gap-3 mb-3">
           <!-- Icon -->
-          <div class="w-8 h-8 rounded flex items-center justify-center flex-shrink-0"
-            :class="p.is_default ? 'bg-notion-accent/10 dark:bg-notion-accent-dark/15' : 'bg-gray-100 dark:bg-gray-700'"
+          <div class="w-8 h-8 rounded-btn flex items-center justify-center flex-shrink-0"
+            :class="p.is_default ? 'bg-accent-10 border border-accent-20' : 'bg-gray-100 border border-gray-200 dark:bg-gray-700 dark:border-gray-600'"
           >
             <svg class="w-4 h-4" :class="p.is_default ? 'text-notion-accent dark:text-notion-accent-dark' : 'text-notion-muted dark:text-notion-muted-dark'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5"/>

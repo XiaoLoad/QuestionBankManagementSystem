@@ -137,7 +137,7 @@ function renderChart() {
   })
 }
 
-const totalIconColor = 'bg-notion-accent/10 dark:bg-notion-accent-dark/15 text-notion-accent dark:text-notion-accent-dark'
+const totalIconColor = 'bg-accent-10 border border-accent-20 text-accent'
 </script>
 
 <template>
@@ -182,7 +182,7 @@ const totalIconColor = 'bg-notion-accent/10 dark:bg-notion-accent-dark/15 text-n
         <!-- Trash count -->
         <div v-if="stats.trashCount > 0" class="card cursor-pointer hover:shadow-md transition-shadow" @click="router.push('/trash')">
           <div class="flex items-center gap-3 mb-3">
-            <div class="w-9 h-9 rounded-btn flex items-center justify-center bg-red-50 text-red-500 dark:bg-red-900/20 dark:text-red-400">
+            <div class="w-9 h-9 rounded-btn flex items-center justify-center bg-red-50 border border-red-200 text-red-500 dark:bg-red-900/20 dark:border-red-800 dark:text-red-400">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
               </svg>
