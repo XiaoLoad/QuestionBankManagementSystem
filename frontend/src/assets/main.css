@@ -119,11 +119,23 @@ mark.search-highlight {
 .dark .json-viewer .json-num { color: #fbbf24; }
 .dark .json-viewer .json-bool { color: #f87171; }
 
-/* Page transition */
-.page-enter-active { transition: opacity 0.2s ease, transform 0.2s ease; }
-.page-leave-active { transition: opacity 0.15s ease; }
-.page-enter-from { opacity: 0; transform: translateY(8px); }
-.page-leave-to { opacity: 0; }
+/* Page transition - 优化版 */
+.page-enter-active {
+  transition: opacity 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+              transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.page-leave-active {
+  transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.page-enter-from {
+  opacity: 0;
+  transform: translateY(16px);
+}
+.page-leave-to {
+  opacity: 0;
+  transform: translateY(-8px);
+}
 
 /* Collapse transition */
 .collapse-enter-active { transition: all 0.3s ease-out; }
@@ -139,18 +151,44 @@ mark.search-highlight {
 }
 .animate-fade-in-up { animation: fade-in-up 0.3s ease-out both; }
 
-/* Stagger delays for list items */
+/* Stagger delays for list items - 扩展到 10 项 */
 .stagger-1 { animation-delay: 0ms; }
 .stagger-2 { animation-delay: 30ms; }
 .stagger-3 { animation-delay: 60ms; }
 .stagger-4 { animation-delay: 90ms; }
 .stagger-5 { animation-delay: 120ms; }
 .stagger-6 { animation-delay: 150ms; }
+.stagger-7 { animation-delay: 180ms; }
+.stagger-8 { animation-delay: 210ms; }
+.stagger-9 { animation-delay: 240ms; }
+.stagger-10 { animation-delay: 270ms; }
 
-/* Skeleton shimmer */
+/* 列表容器淡入 */
+@keyframes list-enter {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.animate-list-enter {
+  animation: list-enter 0.3s ease-out both;
+}
+
+/* 列表项退场动画 */
+@keyframes fade-out-down {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(8px); }
+}
+.animate-fade-out-down {
+  animation: fade-out-down 0.2s ease-in both;
+}
+
+/* Skeleton shimmer - 增强版 */
 @keyframes shimmer {
   0% { background-position: -200% 0; }
   100% { background-position: 200% 0; }
+}
+@keyframes skeleton-wave {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
 }
 .skeleton {
   background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
@@ -161,6 +199,126 @@ mark.search-highlight {
 .dark .skeleton {
   background: linear-gradient(90deg, #2a2a2a 25%, #333 50%, #2a2a2a 75%);
   background-size: 200% 100%;
+}
+.skeleton-enhanced {
+  position: relative;
+  overflow: hidden;
+}
+.skeleton-enhanced::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.4),
+    transparent
+  );
+  animation: skeleton-wave 1.5s ease-in-out infinite;
+}
+
+/* 脉冲加载动画 */
+@keyframes pulse-glow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+.animate-pulse-glow {
+  animation: pulse-glow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* 旋转缩放加载 */
+@keyframes spin-scale {
+  0% { transform: rotate(0deg) scale(1); }
+  50% { transform: rotate(180deg) scale(0.8); }
+  100% { transform: rotate(360deg) scale(1); }
+}
+.animate-spin-scale {
+  animation: spin-scale 1.5s ease-in-out infinite;
+}
+
+/* 波纹加载动画 */
+@keyframes ripple {
+  0% { transform: scale(0); opacity: 1; }
+  100% { transform: scale(4); opacity: 0; }
+}
+.ripple-loader {
+  position: relative;
+  overflow: hidden;
+}
+.ripple-loader::after {
+  content: '';
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: ripple 1.5s ease-out infinite;
+}
+
+/* 弹窗遮罩动画 */
+.modal-overlay-enter-active {
+  transition: opacity 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.modal-overlay-leave-active {
+  transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.modal-overlay-enter-from,
+.modal-overlay-leave-to {
+  opacity: 0;
+}
+
+/* 弹窗内容动画 */
+.modal-content-enter-active {
+  transition: all 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.modal-content-leave-active {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.modal-content-enter-from {
+  opacity: 0;
+  transform: scale(0.95) translateY(10px);
+}
+.modal-content-leave-to {
+  opacity: 0;
+  transform: scale(0.98) translateY(-5px);
+}
+
+/* 无障碍支持 - 减少动画 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .page-enter-active,
+  .page-leave-active {
+    transition: opacity 0.1s ease;
+  }
+
+  .page-enter-from,
+  .page-leave-to {
+    transform: none;
+  }
+
+  .animate-fade-in-up,
+  .animate-fade-out-down,
+  .animate-list-enter {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .skeleton,
+  .skeleton-enhanced::after {
+    animation: none;
+  }
 }
 
 /* Markdown 样式 */

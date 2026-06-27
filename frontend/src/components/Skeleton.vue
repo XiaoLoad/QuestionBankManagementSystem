@@ -7,6 +7,7 @@ defineProps({
   rounded: { type: String, default: '6px' },
   circle: { type: Boolean, default: false },
   lines: { type: Number, default: 0 },
+  enhanced: { type: Boolean, default: false },
 })
 </script>
 
@@ -14,7 +15,7 @@ defineProps({
   <!-- 单个骨架块 -->
   <div
     v-if="lines === 0"
-    class="skeleton"
+    :class="['skeleton', { 'skeleton-enhanced': enhanced }]"
     :style="{
       width: circle ? height : width,
       height: height,
@@ -26,7 +27,7 @@ defineProps({
     <div
       v-for="i in lines"
       :key="i"
-      class="skeleton"
+      :class="['skeleton', { 'skeleton-enhanced': enhanced }]"
       :style="{
         width: i === lines ? '60%' : '100%',
         height: height,

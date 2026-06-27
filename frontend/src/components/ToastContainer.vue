@@ -41,10 +41,30 @@ const colorMap = {
 </template>
 
 <style scoped>
-.toast-enter-active { transition: all 0.3s ease-out; }
-.toast-leave-active { transition: all 0.3s ease-in; }
-.toast-enter-from { transform: translateY(-100%); opacity: 0; }
-.toast-leave-to { transform: translateY(-100%); opacity: 0; }
+/* Toast 入场动画 - 从右侧滑入 + 弹性效果 */
+.toast-enter-active {
+  transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Toast 退场动画 - 向右滑出 */
+.toast-leave-active {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.toast-enter-from {
+  transform: translateX(100%) scale(0.9);
+  opacity: 0;
+}
+
+.toast-leave-to {
+  transform: translateX(100%) scale(0.9);
+  opacity: 0;
+}
+
+/* Toast 移动动画 */
+.toast-move {
+  transition: transform 0.3s ease;
+}
 
 /* Toast容器样式 - PC端 */
 .toast-container {
@@ -63,6 +83,26 @@ const colorMap = {
     width: 100%;
     padding: max(0.75rem, env(safe-area-inset-top, 0px)) 0.75rem 0.75rem;
     background: transparent;
+  }
+
+  /* 移动端 Toast 从下方滑入 */
+  .toast-enter-from {
+    transform: translateY(100%) scale(0.9);
+  }
+  .toast-leave-to {
+    transform: translateY(100%) scale(0.9);
+  }
+}
+
+/* 无障碍支持 */
+@media (prefers-reduced-motion: reduce) {
+  .toast-enter-active,
+  .toast-leave-active {
+    transition: opacity 0.1s ease;
+  }
+  .toast-enter-from,
+  .toast-leave-to {
+    transform: none;
   }
 }
 </style>
