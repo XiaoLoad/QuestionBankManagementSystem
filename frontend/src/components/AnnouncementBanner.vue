@@ -22,33 +22,54 @@ const renderedModalContent = computed(() => {
 const bannerContent = ref('')
 const bannerEnabled = ref(false)
 const bannerDismissed = ref(false)
+const bannerExpanded = ref(false)
 
-const SEEN_KEY = 'seen_announcement_modal_at'
+// 分别追踪弹窗和横幅的已读状态
+const MODAL_SEEN_KEY = 'seen_announcement_modal_at'
+const BANNER_DISMISSED_KEY = 'dismissed_announcement_banner_at'
 let modalUpdatedAt = ''
+let bannerUpdatedAt = ''
 
 async function loadAnnouncement() {
   try {
     const data = await api.getSiteSettings()
-    // 弹窗公告
+
+    // 弹窗公告 - 独立追踪
     modalContent.value = data.announcement_modal || ''
     modalEnabled.value = data.announcement_modal_enabled || false
     modalUpdatedAt = data.announcement_modal_updated_at || ''
     if (modalEnabled.value && modalContent.value) {
-      const lastSeen = localStorage.getItem(SEEN_KEY) || ''
+      const lastSeen = localStorage.getItem(MODAL_SEEN_KEY) || ''
       if (!lastSeen || modalUpdatedAt > lastSeen) {
         showModal.value = true
       }
     }
-    // 横幅公告
+
+    // 横幅公告 - 独立追踪
     bannerContent.value = data.announcement_banner || ''
     bannerEnabled.value = data.announcement_banner_enabled || false
+    bannerUpdatedAt = data.announcement_banner_updated_at || ''
+    if (bannerEnabled.value && bannerContent.value) {
+      const dismissedAt = localStorage.getItem(BANNER_DISMISSED_KEY) || ''
+      // 如果用户从未关闭过，或者横幅有更新，则显示
+      bannerDismissed.value = dismissedAt && bannerUpdatedAt && !(bannerUpdatedAt > dismissedAt)
+    } else {
+      bannerDismissed.value = true
+    }
   } catch {}
 }
 
 function closeModal() {
   showModal.value = false
   try {
-    localStorage.setItem(SEEN_KEY, modalUpdatedAt || new Date().toISOString())
+    localStorage.setItem(MODAL_SEEN_KEY, modalUpdatedAt || new Date().toISOString())
+  } catch {}
+}
+
+function dismissBanner() {
+  bannerDismissed.value = true
+  try {
+    localStorage.setItem(BANNER_DISMISSED_KEY, bannerUpdatedAt || new Date().toISOString())
   } catch {}
 }
 
@@ -59,20 +80,31 @@ onMounted(loadAnnouncement)
   <!-- 横幅公告 -->
   <div
     v-if="bannerEnabled && bannerContent && !bannerDismissed"
-    class="mb-5 sm:mb-6 p-3 sm:p-4 rounded-card bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 flex items-start gap-3"
+    class="mb-5 sm:mb-6 p-3 sm:p-4 rounded-card bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800"
   >
-    <svg class="w-5 h-5 text-blue-500 dark:text-blue-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-    </svg>
-    <div class="flex-1 min-w-0">
-      <p class="text-xs font-semibold text-blue-600 dark:text-blue-400 mb-1">通知</p>
-      <p class="text-sm text-blue-800 dark:text-blue-200 leading-relaxed line-clamp-2">{{ bannerContent }}</p>
-    </div>
-    <button @click="bannerDismissed = true" class="p-1 rounded hover:bg-blue-100 dark:hover:bg-blue-800/30 transition-colors flex-shrink-0">
-      <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+    <div class="flex items-start gap-3">
+      <svg class="w-5 h-5 text-blue-500 dark:text-blue-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
       </svg>
-    </button>
+      <div class="flex-1 min-w-0">
+        <p class="text-xs font-semibold text-blue-600 dark:text-blue-400 mb-1">通知</p>
+        <p
+          class="text-sm text-blue-800 dark:text-blue-200 leading-relaxed whitespace-pre-wrap break-words"
+          :class="{ 'line-clamp-3': !bannerExpanded }"
+        >{{ bannerContent }}</p>
+        <button
+          @click="bannerExpanded = !bannerExpanded"
+          class="mt-1 text-xs text-blue-500 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+        >
+          {{ bannerExpanded ? '收起' : '展开全部' }}
+        </button>
+      </div>
+      <button @click="dismissBanner" class="p-1 rounded hover:bg-blue-100 dark:hover:bg-blue-800/30 transition-colors flex-shrink-0">
+        <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
   </div>
 
   <!-- 弹窗公告模态框 -->

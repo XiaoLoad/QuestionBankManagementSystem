@@ -32,6 +32,7 @@ module.exports = function (getDb, { sendError, localNow }, auth) {
       announcement_modal_updated_at: settings.announcement_modal_updated_at || '',
       announcement_banner: settings.announcement_banner || DEFAULTS.announcement_banner,
       announcement_banner_enabled: settings.announcement_banner_enabled === '1',
+      announcement_banner_updated_at: settings.announcement_banner_updated_at || '',
       footer_text: settings.footer_text || DEFAULTS.footer_text,
       footer_hitokoto: settings.footer_hitokoto === '1',
       footer_hitokoto_types: settings.footer_hitokoto_types || DEFAULTS.footer_hitokoto_types,
@@ -139,6 +140,9 @@ module.exports = function (getDb, { sendError, localNow }, auth) {
       settings[row.key] = row.value;
       if (row.key === 'announcement_modal' && row.updated_at) {
         settings.announcement_modal_updated_at = row.updated_at;
+      }
+      if (row.key === 'announcement_banner' && row.updated_at) {
+        settings.announcement_banner_updated_at = row.updated_at;
       }
     }
 
