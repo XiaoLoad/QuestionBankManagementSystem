@@ -117,3 +117,17 @@
   --theme-accent: #7986cb;
   --theme-muted: #5a6a80;
 }
+
+/* 主题切换过渡动画 */
+.theme-transitioning,
+.theme-transitioning *,
+.theme-transitioning *::before,
+.theme-transitioning *::after {
+  transition: background-color 0.3s ease !important,
+              color 0.3s ease !important,
+              border-color 0.3s ease !important,
+              box-shadow 0.3s ease !important,
+              fill 0.3s ease !important,
+              stroke 0.3s ease !important;
+}
+
