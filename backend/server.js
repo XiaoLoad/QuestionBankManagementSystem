@@ -18,7 +18,9 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ========== Constants ==========
-const DATA_DIR = process.env.DATA_DIR || __dirname;
+// 运行时数据统一存放在项目根目录的 data/ 下（与 Docker 的 /app/data 结构一致），
+// 容器/自定义部署通过 DATA_DIR 覆盖
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, "..", "data");
 const CONFIG_PATH = path.join(DATA_DIR, "db-config.json");
 const DEFAULT_DB_PATH = path.join(DATA_DIR, "default.db");
 const UPLOADS_DIR = path.join(DATA_DIR, "databases");
@@ -472,7 +474,7 @@ const setDb = (newDb) => {
 
 // ========== Middleware ==========
 app.use(express.json({ limit: "2mb" }));
-app.use(express.static(path.join(__dirname, "frontend", "dist")));
+app.use(express.static(path.join(__dirname, "..", "frontend", "dist")));
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -655,7 +657,7 @@ app.get("/api/refresh", auth.authRequired, (req, res) => {
 // ========== Vue Router fallback ==========
 app.get("*", (req, res, next) => {
   if (req.path.startsWith("/api/")) return next();
-  res.sendFile(path.join(__dirname, "frontend", "dist", "index.html"));
+  res.sendFile(path.join(__dirname, "..", "frontend", "dist", "index.html"));
 });
 
 // ========== Error handlers ==========

@@ -3,11 +3,11 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "db:init": "node db-init.js",
-    "prestart": "node db-init.js",
-    "start": "node server.js",
+    "db:init": "node backend/db-init.js",
+    "prestart": "node backend/db-init.js",
+    "start": "node backend/server.js",
     "build:web": "cd frontend && yarn build",
-    "build": "yarn build:web && node server.js",
+    "build": "yarn build:web && node backend/server.js",
     "release:patch": "node scripts/release.js patch",
     "release:minor": "node scripts/release.js minor",
     "release:major": "node scripts/release.js major"

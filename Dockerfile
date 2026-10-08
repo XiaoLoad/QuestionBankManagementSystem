@@ -20,9 +20,7 @@ COPY package.json yarn.lock ./
 RUN yarn install --frozen-lockfile && yarn cache clean
 
 # Copy backend source
-COPY server.js db-init.js utils.js validate.js migrate-blob.js ./
-COPY middleware/ ./middleware/
-COPY routes/ ./routes/
+COPY backend/ ./backend/
 
 # Copy built frontend from stage 1
 COPY --from=frontend-build /app/frontend/dist ./frontend/dist
@@ -31,7 +29,7 @@ COPY --from=frontend-build /app/frontend/dist ./frontend/dist
 RUN apk del python3 make g++
 
 # Create data directories
-RUN mkdir -p /app/databases /app/tmp-uploads
+RUN mkdir -p /app/data/databases /app/data/tmp-uploads
 
 # Environment variables
 ENV PORT=3000
@@ -43,4 +41,4 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD wget -qO- http://localhost:3000/api/auth/me || exit 1
 
-CMD ["node", "server.js"]
+CMD ["node", "backend/server.js"]

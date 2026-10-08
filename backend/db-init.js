@@ -13,7 +13,12 @@ const fs = require('fs');
 const bcrypt = require('bcryptjs');
 const { localNow } = require('./utils');
 
-const DB_PATH = path.join(__dirname, 'default.db');
+// 与 server.js 保持一致：支持 DATA_DIR 环境变量覆盖，默认存放在项目根目录 data/
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '..', 'data');
+const DB_PATH = path.join(DATA_DIR, 'default.db');
+
+// data/ 目录不入 Git，全新下载时自动创建
+fs.mkdirSync(DATA_DIR, { recursive: true });
 
 if (fs.existsSync(DB_PATH)) {
   console.log('[db-init] default.db 已存在，跳过初始化。');
