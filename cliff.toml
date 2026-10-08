@@ -1,0 +1,39 @@
+# git-cliff 配置：基于 conventional commits 自动生成 CHANGELOG.md
+# 提交前缀约定：feat / fix / ui / perf / refactor / docs / test / chore
+[changelog]
+header = "# 更新日志\n\n本文件基于提交记录自动生成，请勿手动编辑（发版由 `yarn release:patch|minor|major` 驱动）。\n"
+body = """
+{% if version %}\
+## {{ version }}（{{ timestamp | date(format="%Y-%m-%d") }}）
+{% else %}\
+## 未发布
+{% endif %}\
+{% for group, commits in commits | group_by(attribute="group") %}\n\
+### {{ group }}\n\
+{% for commit in commits %}\
+- {% if commit.scope %}**{{ commit.scope }}**: {% endif %}{{ commit.message | upper_first }}（{{ commit.id | truncate(length=7, end="") }}）\n\
+{% endfor %}\
+{% endfor %}\
+"""
+trim = true
+
+[git]
+conventional_commits = true
+filter_unconventional = false
+split_commits = false
+commit_parsers = [
+  { message = "^feat", group = "新功能" },
+  { message = "^fix", group = "问题修复" },
+  { message = "^ui", group = "界面优化" },
+  { message = "^perf", group = "性能优化" },
+  { message = "^refactor", group = "重构" },
+  { message = "^doc", group = "文档" },
+  { message = "^test", group = "测试" },
+  { message = "^chore\\(release\\)", skip = true },
+  { message = "^chore", group = "杂项" },
+  { message = ".*", group = "其他" },
+]
+filter_commits = false
+tag_pattern = "v[0-9].*"
+topo_order = false
+sort_commits = "oldest"

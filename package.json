@@ -7,7 +7,10 @@
     "prestart": "node db-init.js",
     "start": "node server.js",
     "build:web": "cd frontend && yarn build",
-    "build": "yarn build:web && node server.js"
+    "build": "yarn build:web && node server.js",
+    "release:patch": "node scripts/release.js patch",
+    "release:minor": "node scripts/release.js minor",
+    "release:major": "node scripts/release.js major"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
@@ -15,5 +18,8 @@
     "express": "^4.21.0",
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.1.1"
+  },
+  "devDependencies": {
+    "git-cliff": "^2.14.2"
   }
 }
