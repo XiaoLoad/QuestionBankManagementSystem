@@ -343,6 +343,11 @@ function renderOptions(options) {
   try { return JSON.parse(options) } catch { return [options] }
 }
 
+// 题目图片经后端代理加载，绕过图床防盗链（如超星 cldisk 校验 Referer）
+function imgProxy(url) {
+  return `/api/proxy-image?url=${encodeURIComponent(url)}`
+}
+
 function openImage(url) {
   window.open(url, '_blank')
 }
@@ -435,10 +440,10 @@ function answersMatch(aiAnswers, currentAnswers) {
             <img
               v-for="(url, i) in question.images"
               :key="i"
-              :src="url"
+              :src="imgProxy(url)"
               class="w-full rounded-btn border border-notion-border dark:border-notion-border-dark cursor-pointer hover:opacity-90 transition-opacity"
               loading="lazy"
-              @click="openImage(url)"
+              @click="openImage(imgProxy(url))"
               @error="(e) => e.target.style.display='none'"
             />
           </div>

@@ -7,8 +7,43 @@ const BUILT_IN_PROVIDERS = [
   { name: '豆包', base_url: 'https://ark.cn-beijing.volces.com/api/v3' },
 ];
 
-module.exports = function (getDb, { md5, sendError, localNow, extractImageUrls, stripImageUrls, buildUserContent }, auth) {
+module.exports = function (getDb, { md5, sendError, localNow, extractImageUrls, stripImageUrls, buildUserContent, pickReferer }, auth) {
   const router = express.Router();
+
+  // 解析题目 images 字段（JSON 数组字符串），提取可用的图片 URL
+  function parseStoredImages(raw) {
+    if (!raw) return [];
+    try {
+      const arr = JSON.parse(raw);
+      return Array.isArray(arr) ? arr.filter(u => typeof u === 'string' && /^https?:\/\//.test(u)) : [];
+    } catch { return []; }
+  }
+
+  // 服务端下载图片并转为 base64 data URL（AI 服务商无法直接访问带防盗链的图床）
+  async function fetchImageAsDataUrl(url) {
+    try {
+      const headers = {};
+      const referer = pickReferer(url);
+      if (referer) headers['Referer'] = referer;
+      headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36';
+      const resp = await fetch(url, { headers, signal: AbortSignal.timeout(10000) });
+      if (!resp.ok) return null;
+      const type = resp.headers.get('content-type') || '';
+      if (!type.startsWith('image/')) return null;
+      const buf = Buffer.from(await resp.arrayBuffer());
+      if (buf.length === 0 || buf.length > 5 * 1024 * 1024) return null;
+      return `data:${type.split(';')[0]};base64,${buf.toString('base64')}`;
+    } catch { return null; }
+  }
+
+  // 依次解析图片 URL：下载成功转 base64，失败回退原 URL（最多 5 张防滥用）
+  async function resolveImageUrls(urls) {
+    const out = [];
+    for (const u of urls.slice(0, 5)) {
+      out.push(await fetchImageAsDataUrl(u) || u);
+    }
+    return out;
+  }
 
   // GET /api/ai/presets (所有登录用户可访问)
   router.get('/presets', (req, res) => {
@@ -280,8 +315,9 @@ module.exports = function (getDb, { md5, sendError, localNow, extractImageUrls, 
 
       // 查找题目分类（只取下划线前的分类名，去除导入来源）
       let category = '';
+      let question = null;
       try {
-        const question = db.prepare('SELECT category FROM data_questions WHERE content = ? AND type = ? AND deleted_at IS NULL LIMIT 1').get(content, type);
+        question = db.prepare('SELECT category, images FROM data_questions WHERE content = ? AND type = ? AND deleted_at IS NULL LIMIT 1').get(content, type);
         const rawCategory = question?.category || '默认';
         // 如果分类名包含下划线，只取第一部分作为题库分类名
         category = rawCategory.includes('_') ? rawCategory.split('_')[0] : rawCategory;
@@ -298,10 +334,12 @@ module.exports = function (getDb, { md5, sendError, localNow, extractImageUrls, 
       const timeoutMs = Math.max(10000, Math.min(600000, parseInt(timeout) || 120000));
       const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-      // 检测题目中的图片 URL，构建 multimodal content
-      const imageUrls = extractImageUrls(content);
-      const userContent = imageUrls.length > 0
-        ? buildUserContent(stripImageUrls(prompt), imageUrls)
+      // 检测题目中的图片 URL（正文 + images 字段），构建 multimodal content
+      const storedImageUrls = parseStoredImages(question?.images);
+      const imageUrls = [...new Set([...extractImageUrls(content), ...storedImageUrls])];
+      const resolvedImageUrls = await resolveImageUrls(imageUrls);
+      const userContent = resolvedImageUrls.length > 0
+        ? buildUserContent(stripImageUrls(prompt), resolvedImageUrls)
         : prompt;
 
       let response;
@@ -612,8 +650,9 @@ module.exports = function (getDb, { md5, sendError, localNow, extractImageUrls, 
         : '';
 
       let category = '默认';
+      let question = null;
       try {
-        const question = db.prepare('SELECT category FROM data_questions WHERE content = ? AND type = ? AND deleted_at IS NULL LIMIT 1').get(content, type);
+        question = db.prepare('SELECT category, images FROM data_questions WHERE content = ? AND type = ? AND deleted_at IS NULL LIMIT 1').get(content, type);
         const rawCategory = question?.category || '默认';
         category = rawCategory.includes('_') ? rawCategory.split('_')[0] : rawCategory;
       } catch {}
@@ -623,6 +662,14 @@ module.exports = function (getDb, { md5, sendError, localNow, extractImageUrls, 
         .replace(/\{content\}/g, content)
         .replace(/\{options\}/g, optionsStr)
         .replace(/\{category\}/g, category);
+
+      // 检测题目中的图片 URL（正文 + images 字段），构建 multimodal content（与 /analyze 保持一致）
+      const storedImageUrls = parseStoredImages(question?.images);
+      const imageUrls = [...new Set([...extractImageUrls(content), ...storedImageUrls])];
+      const resolvedImageUrls = await resolveImageUrls(imageUrls);
+      const userContent = resolvedImageUrls.length > 0
+        ? buildUserContent(stripImageUrls(prompt), resolvedImageUrls)
+        : prompt;
 
       // 发送用户提问词
       res.write(`data: ${JSON.stringify({ type: 'prompt', content: prompt })}\n\n`);
@@ -645,7 +692,7 @@ module.exports = function (getDb, { md5, sendError, localNow, extractImageUrls, 
             model: provider.model,
             messages: [
               { role: 'system', content: systemPrompt },
-              { role: 'user', content: prompt },
+              { role: 'user', content: userContent },
             ],
             temperature: 0.1,
             stream: true,
@@ -667,7 +714,9 @@ module.exports = function (getDb, { md5, sendError, localNow, extractImageUrls, 
         // 不要直接返回 AI 服务商的 401 状态码
         const status = response.status === 401 ? 502 : response.status;
         const errorMsg = response.status === 401 ? 'API Key 无效，请检查 AI 设置' : `AI 请求失败: HTTP ${response.status}`;
-        res.write(`data: ${JSON.stringify({ type: 'error', message: errorMsg })}\n\n`);
+        // 透传服务商错误详情（如"模型不支持图像输入"），便于定位问题
+        const detail = text.slice(0, 300).replace(/\s+/g, ' ').trim();
+        res.write(`data: ${JSON.stringify({ type: 'error', message: detail ? `${errorMsg} - ${detail}` : errorMsg })}\n\n`);
         return res.end();
       }
 

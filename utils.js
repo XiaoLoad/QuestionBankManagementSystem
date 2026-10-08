@@ -59,4 +59,14 @@ function buildUserContent(text, imageUrls) {
   return parts
 }
 
-module.exports = { localNow, safeParse, md5, sendError, extractImageUrls, stripImageUrls, buildUserContent }
+// 图片防盗链：部分图床（如超星 cldisk）校验 Referer 白名单，按域名匹配伪装来源
+const IMAGE_REFERER_MAP = [
+  { match: /cldisk\.com|chaoxing\.com|xueyitong/, referer: 'https://mooc1.chaoxing.com/' },
+];
+
+function pickReferer(url) {
+  const hit = IMAGE_REFERER_MAP.find(r => r.match.test(url));
+  return hit ? hit.referer : undefined;
+}
+
+module.exports = { localNow, safeParse, md5, sendError, extractImageUrls, stripImageUrls, buildUserContent, pickReferer }
