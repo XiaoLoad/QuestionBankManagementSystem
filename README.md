@@ -10,7 +10,7 @@
 
 ![Version](https://img.shields.io/github/v/tag/XiaoLoad/QuestionBankManagementSystem?sort=semver&label=version) ![License](https://img.shields.io/github/license/XiaoLoad/QuestionBankManagementSystem) ![Node.js](https://img.shields.io/badge/Node.js-%3E%3D18-339933?logo=node.js&logoColor=white) ![Express](https://img.shields.io/badge/Express-4-000000?logo=express&logoColor=white) ![SQLite](https://img.shields.io/badge/SQLite-3.x_WAL-003B57?logo=sqlite&logoColor=white) ![Vue 3](https://img.shields.io/badge/Vue-3-4FC08D?logo=vuedotjs&logoColor=white) ![Vite](https://img.shields.io/badge/Vite-latest-646CFF?logo=vite&logoColor=white) ![Pinia](https://img.shields.io/badge/Pinia-latest-FFD859?logo=pinia&logoColor=black) ![TailwindCSS](https://img.shields.io/badge/TailwindCSS-3-06B6D4?logo=tailwindcss&logoColor=white) ![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white)
 
-[快速开始](#快速开始) · [核心特性](#核心特性) · [题库对接](#题库对接) · [常见问题](#常见问题)
+[快速开始](#快速开始) · [核心特性](#核心特性) · [运行截图](#运行截图) · [题库对接](#题库对接) · [常见问题](#常见问题)
 
 </div>
 
@@ -103,6 +103,7 @@ question-bank-manager/
 │   ├── DEPLOY.md            #   Linux / Docker 部署指南
 │   ├── ARCHITECTURE.md      #   架构与数据库结构说明
 │   ├── IMPORT-FORMAT.md     #   题库导入格式规范
+│   ├── screenshots/         #   运行截图
 │   └── images/              #   README 图片资源
 ├── scripts/                 # 辅助脚本
 │   ├── release.js           #   发版（CHANGELOG + 版本号 + tag）
@@ -152,6 +153,35 @@ question-bank-manager/
 | `/users` | 用户管理 | 用户列表、创建、删除、权限控制（管理员） |
 | `/activity-logs` | 活动日志 | 用户操作记录查看（管理员） |
 | `/about` | 关于 | 项目介绍、技术栈展示、更新日志 |
+
+## 运行截图
+
+<table>
+  <tr>
+    <td width="50%" align="center"><b>登录页面</b><br><img src="docs/screenshots/login.png" alt="登录页面"/></td>
+    <td width="50%" align="center"><b>仪表盘</b><br><img src="docs/screenshots/dashboard.png" alt="仪表盘"/></td>
+  </tr>
+  <tr>
+    <td width="50%" align="center"><b>题目管理</b><br><img src="docs/screenshots/admin-questions.png" alt="题目管理"/></td>
+    <td width="50%" align="center"><b>题目详情（AI 解析）</b><br><img src="docs/screenshots/question-detail-ai.png" alt="题目详情 AI 解析"/></td>
+  </tr>
+  <tr>
+    <td width="50%" align="center"><b>分类管理</b><br><img src="docs/screenshots/categories.png" alt="分类管理"/></td>
+    <td width="50%" align="center"><b>数据管理</b><br><img src="docs/screenshots/admin-data.png" alt="数据管理"/></td>
+  </tr>
+  <tr>
+    <td width="50%" align="center"><b>用户管理</b><br><img src="docs/screenshots/admin-users.png" alt="用户管理"/></td>
+    <td width="50%" align="center"><b>AI 设置</b><br><img src="docs/screenshots/admin-ai-settings.png" alt="AI 设置"/></td>
+  </tr>
+  <tr>
+    <td width="50%" align="center"><b>题库对接</b><br><img src="docs/screenshots/external-api.png" alt="题库对接"/></td>
+    <td width="50%" align="center"><b>刷题页面</b><br><img src="docs/screenshots/quiz.png" alt="刷题页面"/></td>
+  </tr>
+  <tr>
+    <td width="50%" align="center"><b>刷题过程</b><br><img src="docs/screenshots/quiz-in-progress.png" alt="刷题过程"/></td>
+    <td width="50%" align="center"><b>AI 分析结果</b><br><img src="docs/screenshots/ai-analysis.png" alt="AI 分析结果"/></td>
+  </tr>
+</table>
 
 ## 题库对接
 
