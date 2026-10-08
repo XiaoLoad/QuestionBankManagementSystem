@@ -50,7 +50,7 @@ jobs:
           cp -r scripts package/scripts
           cp -r docs package/docs
           cp -r frontend/dist package/frontend/dist
-          cp package.json yarn.lock README.md package/
+          cp package.json yarn.lock README.md LICENSE package/
           zip -r "question-bank-manager-${GITHUB_REF_NAME}.zip" package
 
       - name: 创建 Release 并上传产物
