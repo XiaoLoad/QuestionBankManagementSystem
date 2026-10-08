@@ -11,8 +11,8 @@
  *   1. 校验工作区干净（未提交改动一律拒绝发版）
  *   2. git-cliff 将未发布提交生成到 CHANGELOG.md，段落标记为新版本号
  *   3. 同步根目录与 frontend 的 package.json 版本号
- *   4. 提交 chore(release): vX.Y.Z 并打同名 annotated tag
- *   5. 提示推送命令
+ *   4. 提交 chore(release): vX.Y.Z 并打同名 annotated tag（携带版本总结）
+ *   5. 提示推送命令与 GitHub Release 创建命令
  */
 const { execSync } = require('child_process');
 const path = require('path');
@@ -61,11 +61,42 @@ run(`npx git-cliff --unreleased --tag ${tag} ${changelogFlag} CHANGELOG.md`);
 run(`npm version ${next} --no-git-tag-version`);
 run(`npm version ${next} --no-git-tag-version`, { cwd: path.join(ROOT, 'frontend') });
 
-// 5. 提交并打 tag
-run('git add CHANGELOG.md package.json package-lock.json frontend/package.json');
-run(`git commit -m "chore(release): ${tag}"`);
-run(`git tag -a ${tag} -m "release ${tag}"`);
+// 5. 提交并打 tag（commit body 与 tag message 均携带版本总结，推送后可直接作为 GitHub Release 说明）
+const releaseFiles = ['CHANGELOG.md', 'package.json', 'package-lock.json', 'frontend/package.json'];
+if (fs.existsSync(path.join(ROOT, 'frontend', 'package-lock.json'))) {
+  releaseFiles.push('frontend/package-lock.json');
+}
+run(`git add ${releaseFiles.join(' ')}`);
+
+// 从 CHANGELOG 提取当前版本段落作为发布总结
+const os = require('os');
+const changelog = fs.readFileSync(changelogPath, 'utf8').replace(/\r\n/g, '\n');
+const start = changelog.indexOf(`## ${tag}`);
+let summary = '';
+if (start !== -1) {
+  summary = changelog
+    .slice(start)
+    .split('\n## v')[0]
+    .split('\n')
+    .slice(1) // 跳过 "## vX.Y.Z（日期）" 标题行
+    .join('\n')
+    .trim();
+}
+
+// tag message：推送后用 gh release create <tag> --notes-from-tag 创建 Release
+const notesPath = path.join(os.tmpdir(), `release-notes-${tag}.md`);
+fs.writeFileSync(notesPath, summary ? `release ${tag}\n\n${summary}\n` : `release ${tag}\n`);
+
+// commit message：subject + 版本总结 body
+const commitMsgPath = path.join(os.tmpdir(), `release-commit-msg-${tag}.txt`);
+fs.writeFileSync(commitMsgPath, summary ? `chore(release): ${tag}\n\n${summary}\n` : `chore(release): ${tag}\n`);
+run(`git commit --cleanup=verbatim -F "${commitMsgPath}"`);
+
+run(`git tag -a ${tag} --cleanup=verbatim -F "${notesPath}"`);
+fs.unlinkSync(notesPath);
+fs.unlinkSync(commitMsgPath);
 
 console.log('');
 console.log(`[release] 发版完成: ${pkg.version} -> ${next}`);
 console.log('[release] 推送远端: git push && git push --tags');
+console.log(`[release] 推送后创建 GitHub Release（以 tag 总结为说明）: gh release create ${tag} --notes-from-tag --title ${tag}`);
