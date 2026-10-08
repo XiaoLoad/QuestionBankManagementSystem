@@ -15,8 +15,6 @@ jobs:
     steps:
       - name: 检出代码
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0 # 完整历史，确保本地能读到 tag 对象
 
       - name: 校验 tag 与 package.json 版本一致
         run: |
@@ -57,7 +55,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          # 本地读取 annotated tag 的 message 作为发版说明（--notes-from-tag 对 annotated tag 会取到 commit message）
+          # checkout@v4 会在本地把 tag 建成指向 commit 的轻量标签，先强制重取真实 tag 对象再读总结
+          git fetch --force --no-tags origin "refs/tags/${GITHUB_REF_NAME}:refs/tags/${GITHUB_REF_NAME}"
+          echo "tag 对象类型: $(git cat-file -t "$GITHUB_REF_NAME")"
           git tag -l --format='%(contents)' "$GITHUB_REF_NAME" > release-notes.md
           gh release create "$GITHUB_REF_NAME" \
             --notes-file release-notes.md \
