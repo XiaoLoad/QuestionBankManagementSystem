@@ -1,0 +1,61 @@
+name: Release
+
+# 推送 v* tag 时自动发版：校验版本一致性 → 构建前端 → 打包产物 → 创建 Release
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 校验 tag 与 package.json 版本一致
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "::error::tag $GITHUB_REF_NAME 与 package.json 版本 $PKG_VERSION 不一致，发版中止"
+            exit 1
+          fi
+          echo "版本校验通过: $GITHUB_REF_NAME"
+
+      - name: 安装 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: yarn
+          cache-dependency-path: |
+            yarn.lock
+            frontend/yarn.lock
+
+      - name: 构建前端
+        run: |
+          cd frontend
+          yarn install --frozen-lockfile
+          yarn build
+
+      - name: 打包发布产物
+        run: |
+          mkdir -p package/frontend
+          cp -r backend package/backend
+          cp -r scripts package/scripts
+          cp -r docs package/docs
+          cp -r frontend/dist package/frontend/dist
+          cp package.json yarn.lock README.md package/
+          zip -r "question-bank-manager-${GITHUB_REF_NAME}.zip" package
+
+      - name: 创建 Release 并上传产物
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --notes-from-tag \
+            --title "$GITHUB_REF_NAME" \
+            "question-bank-manager-${GITHUB_REF_NAME}.zip"
