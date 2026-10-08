@@ -74,6 +74,14 @@ docker compose down             # 停止服务
 ### 开发模式
 
 ```bash
+# 一键并行启动前后端（推荐）
+yarn dev
+# 后端 http://localhost:3000，前端 http://localhost:5173（热更新，日志带【后端】【前端】前缀，Ctrl+C 同时退出）
+```
+
+也可以分终端启动：
+
+```bash
 # 终端 1：启动后端
 yarn start
 
@@ -87,18 +95,26 @@ yarn dev
 
 ```text
 question-bank-manager/
-├── package.json             # 依赖与脚本（yarn start 启动）
+├── package.json             # 依赖与脚本（yarn dev 开发 / yarn start 生产启动）
 ├── cliff.toml               # git-cliff 更新日志生成配置
+├── CHANGELOG.md             # 版本更新日志（发版时自动生成）
 ├── Dockerfile / docker-compose.yml   # Docker 部署
-├── docs/                    # 文档（部署、架构、导入格式、图片资源）
-├── scripts/                 # 辅助脚本（发版、数据迁移）
+├── docs/                    # 文档
+│   ├── DEPLOY.md            #   Linux / Docker 部署指南
+│   ├── ARCHITECTURE.md      #   架构与数据库结构说明
+│   ├── IMPORT-FORMAT.md     #   题库导入格式规范
+│   └── images/              #   README 图片资源
+├── scripts/                 # 辅助脚本
+│   ├── release.js           #   发版（CHANGELOG + 版本号 + tag）
+│   ├── migrate-data-dir.js  #   v1 → v2 运行时数据迁移（一次性）
+│   └── migrate-blob.js      #   历史数据格式迁移
 ├── backend/                 # 后端源码
 │   ├── server.js            #   Express 入口
 │   ├── utils.js             #   通用工具（图片提取、多模态消息构造等）
 │   ├── validate.js          #   导入数据校验
 │   ├── db-init.js           #   数据库表结构初始化
 │   ├── middleware/          #   JWT 认证中间件
-│   └── routes/              #   API 路由（题目、分类、AI、对接、刷题等 14 个模块）
+│   └── routes/              #   API 路由（15 个模块：题目、分类、AI、对接、刷题等）
 ├── data/                    # 运行时数据（自动生成，不入库 Git）
 │   ├── default.db           #   默认 SQLite 数据库
 │   ├── db-config.json       #   多数据库切换配置
@@ -108,9 +124,12 @@ question-bank-manager/
     └── src/
         ├── views/           #   页面（仪表盘、题目、刷题、数据管理等）
         ├── components/      #   公共组件
+        ├── composables/     #   组合式函数
         ├── router/          #   路由
         ├── stores/          #   Pinia 状态管理
-        └── themes/          #   多主题配置
+        ├── themes/          #   多主题配置
+        ├── utils/           #   工具函数
+        └── assets/          #   静态资源
 ```
 
 运行时数据统一存放在 `data/` 目录，可通过 `DATA_DIR` 环境变量自定义位置（Docker 中默认为 `/app/data`），备份时复制该目录即可。
