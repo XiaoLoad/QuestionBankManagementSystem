@@ -15,6 +15,8 @@ jobs:
     steps:
       - name: 检出代码
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # 完整历史，确保本地能读到 tag 对象
 
       - name: 校验 tag 与 package.json 版本一致
         run: |
@@ -55,7 +57,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # 本地读取 annotated tag 的 message 作为发版说明（--notes-from-tag 对 annotated tag 会取到 commit message）
+          git tag -l --format='%(contents)' "$GITHUB_REF_NAME" > release-notes.md
           gh release create "$GITHUB_REF_NAME" \
-            --notes-from-tag \
+            --notes-file release-notes.md \
             --title "$GITHUB_REF_NAME" \
             "question-bank-manager-${GITHUB_REF_NAME}.zip"
