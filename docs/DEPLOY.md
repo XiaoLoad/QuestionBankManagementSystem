@@ -102,7 +102,7 @@ JWT_SECRET=your-random-secret-key-here
 ### 方式一：直接启动（测试用）
 
 ```bash
-node server.js
+node backend/server.js
 ```
 
 ### 方式二：使用 PM2（推荐生产环境）
@@ -144,7 +144,7 @@ After=network.target
 Type=simple
 User=your-username
 WorkingDirectory=/home/your-username/question-bank-manager
-ExecStart=/usr/bin/node server.js
+ExecStart=/usr/bin/node backend/server.js
 Restart=on-failure
 RestartSec=10
 Environment=PORT=3000
@@ -316,17 +316,21 @@ echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
 
 ```
 question-bank-manager/
-├── server.js           # 主服务文件
 ├── package.json        # 项目配置
-├── default.db          # SQLite 数据库
-├── db-init.js          # 数据库初始化
-├── routes/             # API 路由
-├── middleware/          # 中间件
+├── backend/            # 后端源码
+│   ├── server.js       # 主服务文件
+│   ├── db-init.js      # 数据库初始化
+│   ├── routes/         # API 路由
+│   └── middleware/     # 中间件
+├── data/               # 运行时数据（DATA_DIR 默认目录）
+│   ├── default.db      # SQLite 数据库
+│   ├── db-config.json  # 数据库配置
+│   ├── databases/      # 上传的数据库
+│   └── tmp-uploads/    # 上传临时文件
 ├── frontend/           # 前端代码
 │   ├── src/            # 源代码
 │   └── dist/           # 构建产物
-├── databases/          # 数据库文件目录
-└── DEPLOY.md           # 部署文档（本文件）
+└── docs/DEPLOY.md      # 部署文档（本文件）
 ```
 
 ---
