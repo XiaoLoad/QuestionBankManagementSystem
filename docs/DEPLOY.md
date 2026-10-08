@@ -262,12 +262,49 @@ pm2 restart question-bank
 
 # 更新项目
 cd /home/your-username/question-bank-manager
-git pull origin feature/login
+git pull origin main
 cd frontend && npm run build && cd ..
 pm2 restart question-bank
 
 # 备份数据库
-cp default.db default.db.backup.$(date +%Y%m%d)
+cp data/default.db data/default.db.backup.$(date +%Y%m%d)
+```
+
+## 十二点五、从 v1.0.0 升级到 v2.0.0
+
+v2.0.0 对目录结构做了重大调整：后端源码迁入 `backend/`，运行时数据（`default.db`、`db-config.json`、`databases/`、`tmp-uploads/`）统一存放在 `data/` 目录。**v1.0.0 用户升级时必须执行一次数据迁移，否则服务会读到新的空数据库。**
+
+### PM2 / systemd 裸机部署
+
+```bash
+# 1. 停止服务
+pm2 stop question-bank
+
+# 2. 拉取代码并安装依赖
+cd /home/your-username/question-bank-manager
+git pull origin main
+npm install
+
+# 3. 迁移历史数据到 data/（一次性执行，自动改写 db-config.json 中的路径）
+node scripts/migrate-data-dir.js
+
+# 4. 重新构建前端
+cd frontend && npm run build && cd ..
+
+# 5. 启动路径已变更（server.js 迁至 backend/），重建 PM2 进程
+pm2 delete question-bank
+pm2 start backend/server.js --name "question-bank"
+pm2 save
+```
+
+使用 systemd 的部署请同步修改服务文件中的 `ExecStart` 为 `/usr/bin/node backend/server.js`，然后 `sudo systemctl daemon-reload && sudo systemctl restart question-bank`。
+
+### Docker 部署
+
+数据卷挂载（`./data:/app/data`）与 v1.0.0 保持一致，无需数据迁移，重新构建即可：
+
+```bash
+docker compose up -d --build
 ```
 
 ## 十三、常见问题
@@ -294,7 +331,7 @@ chmod -R 755 question-bank-manager
 ```bash
 # 停止服务后复制数据库
 pm2 stop question-bank
-cp default.db default.db.backup
+cp data/default.db data/default.db.backup
 pm2 start question-bank
 ```
 
