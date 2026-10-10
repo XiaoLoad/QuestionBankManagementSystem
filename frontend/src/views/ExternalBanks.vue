@@ -162,12 +162,40 @@ async function clearAllLogs() {
   } catch {}
 }
 
-function copyToClipboard(text, label) {
-  navigator.clipboard.writeText(text).then(() => {
+async function copyToClipboard(text, label) {
+  // navigator.clipboard 仅在安全上下文（HTTPS/localhost）可用，HTTP 部署需降级 execCommand
+  if (navigator.clipboard && window.isSecureContext) {
+    try {
+      await navigator.clipboard.writeText(text)
+      toast.success(`${label}已复制到剪贴板`)
+    } catch {
+      legacyCopy(text, label)
+    }
+    return
+  }
+  legacyCopy(text, label)
+}
+
+function legacyCopy(text, label) {
+  const ta = document.createElement('textarea')
+  ta.value = text
+  ta.style.position = 'fixed'
+  ta.style.opacity = '0'
+  document.body.appendChild(ta)
+  ta.focus()
+  ta.select()
+  let ok = false
+  try {
+    ok = document.execCommand('copy')
+  } catch {
+    ok = false
+  }
+  document.body.removeChild(ta)
+  if (ok) {
     toast.success(`${label}已复制到剪贴板`)
-  }).catch(() => {
+  } else {
     toast.error('复制失败，请手动复制')
-  })
+  }
 }
 
 function formatTime(str) {
