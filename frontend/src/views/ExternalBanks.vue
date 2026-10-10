@@ -2,14 +2,18 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { useApi } from '@/composables/useApi'
 import { useToastStore } from '@/stores/toast'
+import { useConfirmStore } from '@/stores/confirm'
 
 defineOptions({ name: 'ExternalBanks' })
 
 const api = useApi()
 const toast = useToastStore()
+const confirmDialog = useConfirmStore()
 
 // Config
 const config = reactive({
+  external_enabled: true,
+  external_api_key: '',
   yatori_enabled: true,
   ocs_enabled: true,
   max_concurrent_ai: 5,
@@ -18,6 +22,15 @@ const config = reactive({
 })
 const configLoading = ref(true)
 const saving = ref(false)
+
+// API key visibility
+const showKey = ref(false)
+const maskedKey = computed(() => {
+  const k = config.external_api_key || ''
+  if (!k) return '（尚未生成）'
+  if (showKey.value) return k
+  return k.slice(0, 4) + '••••••••' + k.slice(-4)
+})
 
 // Stats
 const stats = ref({
@@ -39,7 +52,7 @@ const baseUrl = computed(() => {
   return 'http://localhost:3000'
 })
 
-const yatoriUrl = computed(() => `${baseUrl.value}/api/external/yatori`)
+const yatoriUrl = computed(() => `${baseUrl.value}/api/external/yatori?token=${config.external_api_key}`)
 const ocsUrl = computed(() => `${baseUrl.value}/api/external/ocs`)
 
 // OCS config JSON for copy
@@ -48,7 +61,7 @@ const ocsConfigJson = computed(() => JSON.stringify([{
   url: ocsUrl.value,
   method: 'get',
   contentType: 'json',
-  data: { title: '${title}', type: '${type}', options: '${options}' },
+  data: { token: config.external_api_key, title: '${title}', type: '${type}', options: '${options}' },
   handler: "return (res) => res.code === 1 ? [res.question, res.answer] : undefined"
 }], null, 2))
 
@@ -109,6 +122,22 @@ async function updateNumberConfig(key, value) {
   await updateConfig(key, num)
 }
 
+async function regenerateApiKey() {
+  const ok = await confirmDialog.show({
+    title: '重新生成接口密钥',
+    message: '旧密钥将立即失效，所有正在使用的 Yatori / OCS 工具会无法查询，直到你把新调用地址同步到工具配置中。确定要继续吗？',
+    confirmText: '重新生成',
+    cancelText: '取消',
+    danger: true,
+  })
+  if (!ok) return
+  try {
+    const result = await api.regenerateExternalApiKey()
+    config.external_api_key = result.api_key
+    toast.success(result.message || '密钥已重新生成')
+  } catch {}
+}
+
 async function clearLogs() {
   try {
     const result = await api.clearExternalLogs(30)
@@ -118,7 +147,14 @@ async function clearLogs() {
 }
 
 async function clearAllLogs() {
-  if (!confirm('确定要清空所有查询日志吗？此操作不可恢复。')) return
+  const ok = await confirmDialog.show({
+    title: '清空查询日志',
+    message: '确定要清空所有查询日志吗？此操作不可恢复。',
+    confirmText: '清空',
+    cancelText: '取消',
+    danger: true,
+  })
+  if (!ok) return
   try {
     const result = await api.clearExternalLogs(0)
     toast.success(result.message || '日志已清空')
@@ -185,6 +221,91 @@ onMounted(async () => {
       <p class="text-sm text-notion-muted dark:text-notion-muted-dark mt-1">
         将本系统作为外部题库，供 Yatori、OCS 网课助手等工具调用
       </p>
+    </div>
+
+    <!-- Security Card -->
+    <div class="card mb-6">
+      <div class="flex items-center gap-3 mb-5">
+        <div class="w-9 h-9 rounded-btn bg-red-50 border border-red-200 dark:bg-red-900/30 dark:border-red-800 flex items-center justify-center flex-shrink-0">
+          <svg class="w-5 h-5 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+          </svg>
+        </div>
+        <div class="flex-1">
+          <h2 class="text-base font-semibold text-notion-text dark:text-notion-text-dark">接口安全</h2>
+          <p class="text-xs text-notion-muted dark:text-notion-muted-dark mt-0.5">外部题库接口需携带密钥调用，防止被扫描滥用</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <span :class="[
+            'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium',
+            config.external_enabled
+              ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+              : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'
+          ]">
+            <span :class="['w-1.5 h-1.5 rounded-full', config.external_enabled ? 'bg-emerald-500' : 'bg-gray-400']"></span>
+            {{ config.external_enabled ? '接口已开启' : '接口已关闭' }}
+          </span>
+          <button
+            @click="updateConfig('external_enabled', !config.external_enabled)"
+            :disabled="saving"
+            :class="[
+              'relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none disabled:opacity-50',
+              config.external_enabled ? 'bg-notion-accent dark:bg-notion-accent-dark' : 'bg-gray-300 dark:bg-gray-600'
+            ]"
+          >
+            <span
+              :class="[
+                'inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200',
+                config.external_enabled ? 'translate-x-6' : 'translate-x-1'
+              ]"
+            />
+          </button>
+        </div>
+      </div>
+
+      <div class="space-y-3">
+        <p class="text-xs text-notion-muted dark:text-notion-muted-dark leading-relaxed">
+          总开关关闭后，下方所有对接接口立即停止响应（Yatori / OCS 查询返回"接口已禁用"）。
+          即使忘记关闭，未携带密钥的请求也会被拒绝，因此开启状态下同样安全。
+        </p>
+        <div>
+          <label class="block text-xs font-medium text-notion-muted dark:text-notion-muted-dark mb-1.5">接口密钥</label>
+          <div class="flex flex-wrap gap-2">
+            <input
+              :value="maskedKey"
+              readonly
+              class="flex-1 min-w-[200px] px-3 py-2 text-sm font-mono rounded-btn border border-notion-border dark:border-notion-border-dark bg-gray-50 dark:bg-gray-800/50 text-notion-text dark:text-notion-text-dark select-all"
+            />
+            <button
+              @click="showKey = !showKey"
+              class="px-3 py-2 text-sm font-medium rounded-btn border border-notion-border dark:border-notion-border-dark text-notion-text dark:text-notion-text-dark hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              :title="showKey ? '隐藏密钥' : '显示密钥'"
+            >
+              <svg v-if="!showKey" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+              </svg>
+              <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>
+              </svg>
+            </button>
+            <button
+              @click="copyToClipboard(config.external_api_key, '接口密钥')"
+              :disabled="!config.external_api_key"
+              class="px-4 py-2 text-sm font-medium rounded-btn border border-notion-border dark:border-notion-border-dark text-notion-text dark:text-notion-text-dark hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors disabled:opacity-50"
+            >复制密钥</button>
+            <button
+              @click="regenerateApiKey()"
+              class="px-4 py-2 text-sm font-medium rounded-btn border border-red-200 dark:border-red-800/50 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+            >重新生成</button>
+          </div>
+          <p class="text-xs text-notion-muted dark:text-notion-muted-dark mt-1.5">
+            工具调用时通过 <code class="px-1 rounded bg-gray-100 dark:bg-gray-800">?token=密钥</code> 或请求头
+            <code class="px-1 rounded bg-gray-100 dark:bg-gray-800">X-API-Key: 密钥</code> 携带；
+            下方接入地址与配置示例已自动填入密钥。
+          </p>
+        </div>
+      </div>
     </div>
 
     <!-- Global Settings Card -->

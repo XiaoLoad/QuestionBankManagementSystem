@@ -215,6 +215,7 @@ export function useApi() {
     // External Banks
     getExternalConfig: () => request('/api/external/config'),
     updateExternalConfig: (body) => request('/api/external/config', { method: 'PUT', body: JSON.stringify(body) }),
+    regenerateExternalApiKey: () => request('/api/external/api-key/regenerate', { method: 'POST' }),
     getExternalStats: () => request('/api/external/stats'),
     getExternalLogs: (params = {}) => {
       const qs = new URLSearchParams()
