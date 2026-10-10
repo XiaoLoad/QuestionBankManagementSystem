@@ -1,4 +1,5 @@
 const express = require('express');
+const crypto = require('crypto');
 
 // Simple semaphore for AI concurrency control
 class Semaphore {
@@ -59,15 +60,23 @@ module.exports = function (getDb, { md5, safeParse, sendError, localNow, extract
       for (const r of rows) {
         try { cfg[r.key] = JSON.parse(r.value); } catch { cfg[r.key] = r.value; }
       }
+      let apiKey = cfg.external_api_key || '';
+      // 兼容旧库升级：密钥缺失时自动生成并落库（db-init 只对全新库播种）
+      if (!apiKey) {
+        apiKey = crypto.randomBytes(16).toString('hex');
+        try { setExternalConfig(db, 'external_api_key', apiKey); } catch {}
+      }
       return {
         yatori_enabled: cfg.yatori_enabled !== undefined ? cfg.yatori_enabled : true,
         ocs_enabled: cfg.ocs_enabled !== undefined ? cfg.ocs_enabled : true,
+        external_enabled: cfg.external_enabled !== undefined ? cfg.external_enabled : true,
+        external_api_key: apiKey,
         max_concurrent_ai: cfg.max_concurrent_ai || 5,
         ai_timeout: cfg.ai_timeout || 30,
         auto_save: cfg.auto_save !== undefined ? cfg.auto_save : true,
       };
     } catch {
-      return { yatori_enabled: true, ocs_enabled: true, max_concurrent_ai: 5, ai_timeout: 30, auto_save: true };
+      return { yatori_enabled: true, ocs_enabled: true, external_enabled: true, external_api_key: '', max_concurrent_ai: 5, ai_timeout: 30, auto_save: true };
     }
   }
 
@@ -532,10 +541,45 @@ module.exports = function (getDb, { md5, safeParse, sendError, localNow, extract
     }
   }
 
+  // ========== Access Guard ==========
+
+  // Extract token from query (?token=), X-API-Key header, or Authorization: Bearer
+  function extractProvidedToken(req) {
+    const q = req.query && req.query.token;
+    if (q && typeof q === 'string' && q.trim()) return q.trim();
+    const apiKeyHeader = req.get('x-api-key');
+    if (apiKeyHeader && apiKeyHeader.trim()) return apiKeyHeader.trim();
+    const auth = req.get('authorization');
+    if (auth && /^Bearer\s+/i.test(auth)) return auth.replace(/^Bearer\s+/i, '').trim();
+    return '';
+  }
+
+  // Constant-time string comparison (hash both to fixed length first)
+  function safeEqual(a, b) {
+    const ha = crypto.createHash('sha256').update(String(a)).digest();
+    const hb = crypto.createHash('sha256').update(String(b)).digest();
+    return crypto.timingSafeEqual(ha, hb);
+  }
+
+  // Guard for tool-facing endpoints (/yatori, /ocs).
+  // 403 body serves both protocols: OCS reads code/msg, yatori reads type/answers.
+  function externalGuard(req, res, next) {
+    const db = getDb();
+    const config = getExternalConfig(db);
+    if (!config.external_enabled) {
+      return res.status(403).json({ code: 0, msg: '接口已禁用', type: '单选', answers: [] });
+    }
+    const provided = extractProvidedToken(req);
+    if (!config.external_api_key || !provided || !safeEqual(config.external_api_key, provided)) {
+      return res.status(403).json({ code: 0, msg: '密钥无效', type: '单选', answers: [] });
+    }
+    next();
+  }
+
   // ========== Yatori Endpoint ==========
 
   // POST /api/external/yatori
-  router.post('/yatori', async (req, res) => {
+  router.post('/yatori', externalGuard, async (req, res) => {
     try {
       const { type, content, hash, options } = req.body;
       if (!content && !hash) {
@@ -556,7 +600,7 @@ module.exports = function (getDb, { md5, safeParse, sendError, localNow, extract
   // ========== OCS Endpoint ==========
 
   // GET /api/external/ocs
-  router.get('/ocs', async (req, res) => {
+  router.get('/ocs', externalGuard, async (req, res) => {
     try {
       const { title, type, options: optStr } = req.query;
       if (!title) {
@@ -586,7 +630,7 @@ module.exports = function (getDb, { md5, safeParse, sendError, localNow, extract
   });
 
   // POST /api/external/ocs (also support POST)
-  router.post('/ocs', async (req, res) => {
+  router.post('/ocs', externalGuard, async (req, res) => {
     try {
       const { title, type, options } = req.body;
       if (!title) {
@@ -624,7 +668,7 @@ module.exports = function (getDb, { md5, safeParse, sendError, localNow, extract
     try {
       const db = getDb();
       const updates = req.body;
-      const allowed = ['yatori_enabled', 'ocs_enabled', 'max_concurrent_ai', 'ai_timeout', 'auto_save'];
+      const allowed = ['yatori_enabled', 'ocs_enabled', 'external_enabled', 'max_concurrent_ai', 'ai_timeout', 'auto_save'];
       for (const [key, value] of Object.entries(updates)) {
         if (allowed.includes(key)) {
           setExternalConfig(db, key, value);
@@ -636,6 +680,16 @@ module.exports = function (getDb, { md5, safeParse, sendError, localNow, extract
       }
       res.json({ message: '配置已更新' });
     } catch (err) { sendError(res, err, 'PUT /api/external/config'); }
+  });
+
+  // POST /api/external/api-key/regenerate — rotate the external access key
+  router.post('/api-key/regenerate', (req, res) => {
+    try {
+      const db = getDb();
+      const key = crypto.randomBytes(16).toString('hex');
+      setExternalConfig(db, 'external_api_key', key);
+      res.json({ api_key: key, message: '密钥已重新生成，旧密钥立即失效，请同步更新工具配置' });
+    } catch (err) { sendError(res, err, 'POST /api/external/api-key/regenerate'); }
   });
 
   // ========== Stats Endpoint ==========

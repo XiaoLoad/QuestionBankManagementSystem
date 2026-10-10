@@ -10,6 +10,7 @@
 const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const { localNow } = require('./utils');
 
@@ -165,6 +166,11 @@ db.prepare("INSERT OR IGNORE INTO data_categories (name, created_at) VALUES (?, 
 const adminHash = bcrypt.hashSync('admin123', 10);
 db.prepare("INSERT OR IGNORE INTO users (username, password, role, display_name, created_at) VALUES (?, ?, ?, ?, ?)")
   .run('admin', adminHash, 'admin', '管理员', now);
+
+// Seed external API defaults: master switch on + random access key (32 hex chars)
+db.prepare("INSERT OR IGNORE INTO external_config (key, value, updated_at) VALUES ('external_enabled', 'true', ?)").run(now);
+db.prepare("INSERT OR IGNORE INTO external_config (key, value, updated_at) VALUES ('external_api_key', ?, ?)")
+  .run(JSON.stringify(crypto.randomBytes(16).toString('hex')), now);
 
 db.close();
 

@@ -556,8 +556,14 @@ app.use("/api/duplicates", auth.adminRequired, duplicatesRouter);
 app.use("/api/database", auth.adminRequired, databaseRouter);
 app.use("/api/quiz", auth.authRequired, quizRouter);
 
-// External routes (no auth required - for yatori/OCS)
+// External routes
+// Tool-facing endpoints (/yatori, /ocs) are protected by an access key (see routes/external.js);
+// management endpoints (config/logs/stats/api-key) require an admin JWT.
 const externalRouter = require("./routes/external")(getDb, helpers);
+app.use("/api/external/config", auth.adminRequired);
+app.use("/api/external/logs", auth.adminRequired);
+app.use("/api/external/stats", auth.adminRequired);
+app.use("/api/external/api-key", auth.adminRequired);
 app.use("/api/external", externalRouter);
 
 // Site settings routes (GET public, PUT admin only)
