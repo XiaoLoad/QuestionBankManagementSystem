@@ -12,31 +12,32 @@
 
 ### 重构
 - **data**: 移除部署到刷课软件功能（781d1a1）
-## 未发布
-
-### 文档
-- **readme**: 同步开发模式说明并修正目录树（8e86f16）
-- **readme**: 新增运行截图章节（0e915e6）
-
-### 新功能
-- **release**: 发版时自动生成版本总结写入 commit 与 tag（1877c60）
-- **dev**: 根目录 yarn dev 一键并行启动前后端（3ee51d7）
-- **release**: 新增 GitHub Actions 自动发版工作流（d6b6526）
 ## v2.0.0（2026-10-08）
 
 ### 文档
 - 部署与架构文档归组至 docs 目录（af3fc85）
 - **readme**: 重构 README 排版，新增徽标、程序图标与目录结构（875839b）
 - 补充 v1.0.0 升级至 v2.0.0 的迁移指南（46ea2cd）
+- **readme**: 同步开发模式说明并修正目录树（8e86f16）
+- **readme**: 新增运行截图章节（0e915e6）
+- **changelog**: 补录 v1.0.0 段缺失的版本管理体系条目（5cef53c）
 
 ### 新功能
 - **前端**: 新增站点 favicon 图标（fd25cf0）
+- **release**: 发版时自动生成版本总结写入 commit 与 tag（1877c60）
+- **dev**: 根目录 yarn dev 一键并行启动前后端（3ee51d7）
+- **release**: 新增 GitHub Actions 自动发版工作流（d6b6526）
+
+### 杂项
+- Add MIT License to the project（e3fb879）
 
 ### 重构
 - **backend**: 统一后端至 backend 目录，运行时数据集中至 data（d839d8c）
 
 ### 问题修复
 - **后端**: 题目图片经代理加载并支持 AI 请求携带图片（268a019）
+- **release**: 发版说明改为本地读取 tag 总结（4a38ca2）
+- **release**: 强制重取真实 tag 对象后再读发版总结（adfed6f）
 ## v1.0.0（2026-10-08）
 
 ### 文档
