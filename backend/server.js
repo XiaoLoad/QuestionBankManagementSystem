@@ -45,7 +45,6 @@ function loadConfig() {
       return {
         currentPath,
         recentPaths: validRecent,
-        targetDir: cfg.targetDir || "",
       };
     }
   } catch (e) {
@@ -54,7 +53,6 @@ function loadConfig() {
   return {
     currentPath: DEFAULT_DB_PATH,
     recentPaths: [DEFAULT_DB_PATH],
-    targetDir: "",
   };
 }
 

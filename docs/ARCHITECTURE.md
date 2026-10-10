@@ -35,7 +35,7 @@
 | `/questions` | 题目管理 | 搜索（关键词高亮）/可搜索分类筛选/分页/增删改查/批量操作 |
 | `/questions/:id` | 题目详情 | 查看完整题目信息（选项、答案、元数据）+ AI 校验答案 |
 | `/categories` | 分类管理 | 分类的增删改查，内联编辑，搜索分页，点击跳转题目列表 |
-| `/data` | 数据管理 | 数据库切换/上传/备份 + 部署到刷课软件 + JSON 导入导出 + 题目去重 + 批量删除 |
+| `/data` | 数据管理 | 数据库切换/上传/备份 + JSON 导入导出 + 题目去重 + 批量删除 |
 | `/trash` | 回收站 | 查看已删除题目 / 恢复 / 永久删除 / 清空回收站 |
 | `/ai-settings` | AI 设置 | 管理 AI 服务商配置、模型选择、连通性测试、超时设置 |
 | `/external` | 题库对接 | 管理 Yatori/OCS 外部查询接口配置、查看统计数据和查询日志 |
@@ -217,7 +217,6 @@ CREATE INDEX idx_questions_deleted_at ON data_questions(deleted_at);
 | **上传冲突处理** | **上传与当前数据库同名的文件时，可选择覆盖或自动重命名（加时间戳后缀）** |
 | **数据库列表** | **显示最近使用的数据库，支持快速切换和从列表移除** |
 | **切回默认** | **一键切回项目目录下的默认数据库 `default.db`** |
-| **部署到刷课软件** | **设置刷课软件数据库目录，选择数据库一键复制部署（支持自定义文件名）** |
 | 数据库备份 | 下载当前数据库文件 |
 | 导出 JSON | 按题型/分类下拉筛选后导出为 JSON 文件 |
 | 导入 JSON | 从 JSON 文件（支持拖拽上传）或粘贴数据批量导入，自动去重（含回收站） |
@@ -479,10 +478,6 @@ question-bank-manager/
 | POST | `/api/database/upload` | 上传 `.db` 文件并切换（multipart/form-data，支持 `?desiredName=` 指定保存名称） |
 | POST | `/api/database/reset` | 切回默认数据库 `default.db` |
 | DELETE | `/api/database/recent` | 从最近使用列表中移除指定路径（`{ dbPath }`） |
-| GET | `/api/database/target-dir` | 获取刷课软件数据库目录路径 |
-| PUT | `/api/database/target-dir` | 设置刷课软件数据库目录路径（`{ dir }`） |
-| GET | `/api/database/available` | 获取所有可用数据库列表（默认数据库 + databases/ 目录下的数据库） |
-| POST | `/api/database/deploy` | 部署数据库到刷课软件目录（`{ sourcePath, fileName, overwrite }`） |
 
 ### 题目去重
 
@@ -523,7 +518,7 @@ question-bank-manager/
 
 ### 工作原理
 
-- 数据库配置存储在 `db-config.json`（运行时自动生成），记录当前使用的数据库路径、最近使用列表和刷课软件目标目录
+- 数据库配置存储在 `db-config.json`（运行时自动生成），记录当前使用的数据库路径和最近使用列表
 - 默认数据库 `default.db` 存放在项目根目录
 - 上传的数据库统一存放在 `databases/` 子目录，与默认数据库隔离
 - 切换数据库时，自动关闭旧连接（执行 WAL checkpoint），打开新连接并初始化表结构
@@ -537,16 +532,6 @@ question-bank-manager/
 3. 在「最近使用的数据库」列表中点击切换到之前用过的数据库
 4. 点击「切回默认数据库」可随时回到项目目录下的 `default.db`
 5. 每条最近记录 hover 后有关闭按钮，可从列表中移除（不删除文件）
-
-### 部署到刷课软件
-
-支持将题库数据库一键部署到 [yatori-go-quesbank](https://github.com/yatori-dev/yatori-go-quesbank) 的数据库目录：
-
-1. 在「部署到刷课软件」卡片中输入刷课软件的数据库目录路径，点击「验证」
-2. 选择要部署的数据库（默认数据库或已上传的数据库）
-3. 输入保存文件名（默认为 `default.db`，可自定义）
-4. 点击「部署」，数据库文件将复制到目标目录
-5. 若目标目录已存在同名文件，会提示确认是否覆盖
 
 ## 外部题库对接
 

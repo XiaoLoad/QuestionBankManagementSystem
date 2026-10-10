@@ -84,7 +84,6 @@ if (configMoved) {
     if (Array.isArray(config.recentPaths)) config.recentPaths = config.recentPaths.map(rewrite);
     fs.writeFileSync(newConfig, JSON.stringify(config, null, 2));
     console.log(`  - currentPath 已改写为: ${config.currentPath}`);
-    console.log(`  - targetDir 保持不变（外部部署目录）: ${config.targetDir}`);
   } catch (err) {
     console.error('[migrate] 改写 db-config.json 失败:', err.message);
     process.exit(1);

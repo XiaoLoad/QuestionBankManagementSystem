@@ -232,10 +232,6 @@ export function useApi() {
     createDatabase: (dbPath) => request('/api/database/create', { method: 'POST', body: JSON.stringify({ dbPath }) }),
     resetDatabase: () => request('/api/database/reset', { method: 'POST' }),
     removeRecentDb: (dbPath) => request('/api/database/recent', { method: 'DELETE', body: JSON.stringify({ dbPath, deleteFile: true }) }),
-    getTargetDir: () => request('/api/database/target-dir'),
-    setTargetDir: (dir) => request('/api/database/target-dir', { method: 'PUT', body: JSON.stringify({ dir }) }),
-    getAvailableDatabases: () => request('/api/database/available'),
-    deployDatabase: (sourcePath, fileName, overwrite) => request('/api/database/deploy', { method: 'POST', body: JSON.stringify({ sourcePath, fileName, overwrite }) }),
     uploadDatabase: async (file, desiredName) => {
       const toast = useToastStore()
       const authStore = useAuthStore()
