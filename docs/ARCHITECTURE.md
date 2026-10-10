@@ -111,6 +111,8 @@ CREATE TABLE external_config (
 );
 ```
 
+存储对接接口的运行配置，键包括 `external_enabled`（总开关）、`external_api_key`（接口密钥）、`yatori_enabled`、`ocs_enabled`、`max_concurrent_ai`、`ai_timeout`、`auto_save`。首次启动会自动写入总开关与随机密钥。
+
 ### external_logs（外部查询日志表）
 
 ```sql
@@ -247,7 +249,10 @@ CREATE INDEX idx_questions_deleted_at ON data_questions(deleted_at);
 | 本地优先查询 | 收到查询请求后，优先在本地题库中精确/模糊匹配题目 |
 | AI 兜底 | 本地未命中时，自动调用配置的 AI 服务获取答案 |
 | 自动入库 | AI 返回的答案自动保存到本地题库（可关闭），逐步扩充题库 |
-| 接口开关 | 可独立启用/禁用 Yatori 和 OCS 接口 |
+| 接口开关 | 可独立启用/禁用 Yatori 和 OCS 接口；另有总开关一键停用全部对接接口 |
+| 接口密钥 | 工具调用需携带密钥（`?token=` 查询参数、`X-API-Key` 或 `Authorization: Bearer` 请求头），缺失或不匹配返回 403 |
+| 密钥管理 | 在「题库对接」页查看、复制、重新生成接口密钥，重新生成后旧密钥立即失效 |
+| 管理鉴权 | 配置、统计、日志与密钥管理端点需管理员登录后访问 |
 | 并发控制 | AI 请求信号量机制，可配置最大并发数（默认 5） |
 | 查询统计 | 实时统计今日查询次数、本地命中/AI 命中/未命中数 |
 | 查询日志 | 记录每次查询的来源、内容、结果、耗时，支持按来源/结果筛选 |
@@ -501,13 +506,21 @@ question-bank-manager/
 
 ### 外部题库查询
 
+工具对接端点，需携带接口密钥（`?token=` 查询参数、`X-API-Key` 或 `Authorization: Bearer` 请求头）：
+
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | POST | `/api/external/yatori` | Yatori 查询接口（兼容 yatori-go-quesbank API 配置） |
 | GET | `/api/external/ocs` | OCS 查询接口（兼容 OCS 自定义题库配置） |
 | POST | `/api/external/ocs` | OCS 查询接口（POST 方式） |
+
+管理端点，需管理员 JWT：
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
 | GET | `/api/external/config` | 获取外部接口配置 |
-| PUT | `/api/external/config` | 更新外部接口配置（yatori_enabled/ocs_enabled/max_concurrent_ai/ai_timeout/auto_save） |
+| PUT | `/api/external/config` | 更新外部接口配置（external_enabled/yatori_enabled/ocs_enabled/max_concurrent_ai/ai_timeout/auto_save） |
+| POST | `/api/external/api-key/regenerate` | 重新生成接口密钥（旧密钥立即失效） |
 | GET | `/api/external/stats` | 获取今日查询统计 |
 | GET | `/api/external/logs` | 查询日志列表（支持 source/result 筛选） |
 | DELETE | `/api/external/logs` | 清理日志（按天数或清空） |
@@ -539,10 +552,19 @@ question-bank-manager/
 
 ### 工作原理
 
-1. 收到查询请求后，**优先在本地题库中匹配**（精确匹配 → MD5 匹配 → 模糊匹配）
-2. 本地未命中时，**自动调用配置的 AI 服务**获取答案
-3. AI 返回的答案可**自动入库**（可关闭），逐步扩充本地题库
-4. 使用信号量机制控制 AI 并发请求数，避免过载
+1. 校验总开关状态与请求携带的接口密钥，未通过则直接返回 403
+2. **优先在本地题库中匹配**（精确匹配 → MD5 匹配 → 模糊匹配）
+3. 本地未命中时，**自动调用配置的 AI 服务**获取答案
+4. AI 返回的答案可**自动入库**（可关闭），逐步扩充本地题库
+5. 使用信号量机制控制 AI 并发请求数，避免过载
+
+### 接口安全
+
+- **接口密钥**：首次启动自动生成 32 位随机密钥并写入 `external_config.external_api_key`；工具调用时通过 `?token=<密钥>` 查询参数、`X-API-Key: <密钥>` 或 `Authorization: Bearer <密钥>` 请求头携带，三者任一即可
+- **总开关**：`external_enabled` 关闭后，Yatori / OCS 查询一律返回「接口已禁用」；即使忘记关闭，未携带正确密钥的请求同样被拒绝
+- **密钥管理**：在「题库对接」页可查看（默认掩码显示）、复制、重新生成密钥；重新生成后旧密钥立即失效，需同步更新工具配置
+- **管理端点鉴权**：配置读写、查询统计、日志查询与清理、密钥重新生成均需管理员 JWT，未登录返回 401
+- **失败响应**：鉴权失败返回 403，响应体同时兼容两种协议（OCS 读取 `code`/`msg`，Yatori 读取 `type`/`answers`），工具侧表现为查询不到答案而非报错
 
 ### Yatori 接口
 
@@ -565,10 +587,10 @@ question-bank-manager/
 }
 ```
 
-**配置方式**：在 yatori-go-quesbank 的 `config.yml` 中配置：
+**配置方式**：在 yatori-go-quesbank 的 `config.yml` 中配置（`token` 替换为「题库对接」页复制的密钥）：
 ```yaml
 apiQueSetting:
-  url: "http://localhost:3000/api/external/yatori"
+  url: "http://localhost:3000/api/external/yatori?token=<接口密钥>"
 ```
 
 ### OCS 接口
@@ -576,6 +598,7 @@ apiQueSetting:
 **端点**：`GET /api/external/ocs` 或 `POST /api/external/ocs`
 
 **请求参数**：
+- `token`：接口密钥（必填，也可改用 `X-API-Key` 或 `Authorization: Bearer` 请求头携带）
 - `title`：题目内容（必填）
 - `type`：题型（可选）
 - `options`：选项 JSON 数组（可选）
@@ -592,17 +615,19 @@ apiQueSetting:
 }
 ```
 
-**配置方式**：在 OCS 中添加自定义题库配置：
+**配置方式**：在 OCS 中添加自定义题库配置（`token` 替换为「题库对接」页复制的密钥）：
 ```json
 [{
   "name": "题库管理系统",
   "url": "http://localhost:3000/api/external/ocs",
   "method": "get",
   "contentType": "json",
-  "data": { "title": "${title}", "type": "${type}", "options": "${options}" },
+  "data": { "token": "<接口密钥>", "title": "${title}", "type": "${type}", "options": "${options}" },
   "handler": "return (res) => res.code === 1 ? [res.question, res.answer] : undefined"
 }]
 ```
+
+「题库对接」页的接入地址与配置示例会**自动填入当前密钥**，直接复制即可使用。
 
 ### 查询结果来源
 
@@ -617,6 +642,8 @@ apiQueSetting:
 
 | 配置项 | 默认值 | 说明 |
 |--------|--------|------|
+| `external_enabled` | `true` | 是否启用全部对接接口（总开关） |
+| `external_api_key` | 首次启动自动生成 | 接口密钥（32 位随机字符串），存储于 `external_config` 表 |
 | `yatori_enabled` | `true` | 是否启用 Yatori 接口 |
 | `ocs_enabled` | `true` | 是否启用 OCS 接口 |
 | `max_concurrent_ai` | `5` | 最大并发 AI 请求数 |

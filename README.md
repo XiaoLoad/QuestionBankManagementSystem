@@ -22,7 +22,7 @@
 * **AI 答案校验** —— 接入 OpenAI 兼容服务（DeepSeek、硅基流动、Kimi、豆包等预设），导入冲突时 AI 辅助判断正确答案。图片内容识别暂不支持，计划后续开发。
 * **刷题练习** —— 选项乱序、自动判题、错题重练、复习模式、进度持久化，移动端适配。
 * **多用户与权限** —— JWT 认证，管理员 / 普通用户角色，分类可见性控制，活动日志审计。
-* **题库对接** —— 兼容 Yatori 与 OCS 查询接口，本地优先查询 + AI 兜底 + 自动入库，越用题库越全。
+* **题库对接** —— 兼容 Yatori 与 OCS 查询接口，本地优先查询 + AI 兜底 + 自动入库，越用题库越全；接口需携带密钥调用，并提供一键停用的总开关。
 * **多数据库管理** —— 多个 SQLite 库的切换、上传与备份。
 * **Docker 部署** —— 一条命令容器化上线。
 
@@ -148,7 +148,7 @@ question-bank-manager/
 | `/data` | 数据管理 | 数据库切换 / 上传 / 备份、导入导出、分类映射、题目去重 |
 | `/trash` | 回收站 | 已删除题目、恢复或永久删除 |
 | `/ai-settings` | AI 设置 | AI 服务商配置、模型选择 |
-| `/external` | 题库对接 | Yatori / OCS 接口配置、统计和日志 |
+| `/external` | 题库对接 | Yatori / OCS 接口配置、接口密钥与总开关、统计和日志 |
 | `/site-settings` | 网站设置 | 公告管理、系统配置（管理员） |
 | `/users` | 用户管理 | 用户列表、创建、删除、权限控制（管理员） |
 | `/activity-logs` | 活动日志 | 用户操作记录查看（管理员） |
@@ -185,13 +185,15 @@ question-bank-manager/
 
 ## 题库对接
 
+对接接口需要携带**接口密钥**：在「题库对接」页的「接口安全」卡片中可查看和复制密钥，页面上的接入地址与配置示例已自动填入密钥，直接复制即可；也可用 `X-API-Key` 或 `Authorization: Bearer` 请求头携带。需要临时停用时，关闭该卡片的总开关即可。
+
 ### Yatori 配置
 
 在 yatori-go-console 的 `config.yml` 中配置：
 
 ```yaml
 apiQueSetting:
-  url: "http://localhost:3000/api/external/yatori"
+  url: "http://localhost:3000/api/external/yatori?token=<接口密钥>"
 ```
 
 ### OCS 配置
@@ -204,7 +206,7 @@ apiQueSetting:
   "url": "http://localhost:3000/api/external/ocs",
   "method": "get",
   "contentType": "json",
-  "data": { "title": "${title}", "type": "${type}", "options": "${options}" },
+  "data": { "token": "<接口密钥>", "title": "${title}", "type": "${type}", "options": "${options}" },
   "handler": "return (res) => res.code === 1 ? [res.question, res.answer] : undefined"
 }]
 ```
