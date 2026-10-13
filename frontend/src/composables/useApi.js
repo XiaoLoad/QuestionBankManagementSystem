@@ -105,6 +105,7 @@ export function useApi() {
     deleteCategory: (id, confirm) => request(`/api/categories/${id}`, { method: 'DELETE', body: JSON.stringify({ confirm }) }),
 
     // Backup
+    getBackupStats: () => request('/api/backup/stats'),
     downloadBackup: () => {
       const toast = useToastStore()
       const authStore = useAuthStore()

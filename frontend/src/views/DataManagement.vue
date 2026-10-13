@@ -57,6 +57,19 @@ function downloadBackup() {
   toast.success('数据库备份下载中...')
 }
 
+// ===== Backup overview =====
+const backupStats = ref(null)
+const backupTypeMax = computed(() =>
+  Math.max(1, ...(backupStats.value?.typeCounts || []).map(t => t.count)),
+)
+const backupCategoryMax = computed(() =>
+  Math.max(1, ...(backupStats.value?.topCategories || []).map(c => c.count)),
+)
+
+async function loadBackupStats() {
+  try { backupStats.value = await api.getBackupStats() } catch {}
+}
+
 function exportJson() {
   const params = {}
   if (exportFilters.types.length > 0) params.type = exportFilters.types.join(',')
@@ -210,6 +223,7 @@ async function loadDbInfo() {
   try {
     const data = await api.getDatabase()
     dbInfo.value = data
+    loadBackupStats()
   } catch {}
 }
 
@@ -288,6 +302,7 @@ async function doUploadDb(file, desiredName) {
       trashCount: result.trashCount || 0,
       categoryCount: result.categoryCount || 0,
     }
+    loadBackupStats()
   } catch (e) {
     // handled
   } finally {
@@ -314,6 +329,7 @@ async function switchToRecent(p) {
       trashCount: result.trashCount || 0,
       categoryCount: result.categoryCount || 0,
     }
+    loadBackupStats()
   } catch (e) {
     // handled
   } finally {
@@ -341,6 +357,7 @@ async function resetDb() {
       trashCount: result.trashCount || 0,
       categoryCount: result.categoryCount || 0,
     }
+    loadBackupStats()
   } catch (e) {
     // handled
   } finally {
@@ -561,9 +578,12 @@ async function batchDeleteByDate() {
         </div>
       </div>
 
-      <!-- Database Backup -->
-      <div class="card">
-        <div class="flex items-center gap-3 mb-4">
+      <!-- Database Backup + Export / Import JSON -->
+      <div class="card lg:col-span-2">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <!-- Left: Database Backup -->
+          <div class="flex flex-col">
+            <div class="flex items-center gap-3 mb-4">
           <div class="w-10 h-10 rounded-btn bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center">
             <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"/>
@@ -574,106 +594,167 @@ async function batchDeleteByDate() {
             <p class="text-xs text-notion-muted dark:text-notion-muted-dark">下载完整的 SQLite 数据库文件</p>
           </div>
         </div>
-        <button @click="downloadBackup" class="btn-primary w-full justify-center">
+
+        <!-- Backup contents overview -->
+        <div v-if="backupStats" class="bg-notion-surface dark:bg-notion-surface-dark rounded-card p-4 mb-4 border border-notion-border dark:border-notion-border-dark">
+          <div class="flex items-center gap-1.5 mb-3">
+            <svg class="w-3.5 h-3.5 text-blue-500 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+            <span class="text-xs font-medium text-notion-muted dark:text-notion-muted-dark">本次备份包含</span>
+          </div>
+
+          <!-- Totals -->
+          <div class="grid grid-cols-3 gap-2 mb-4">
+            <div class="rounded-btn bg-white dark:bg-notion-surface-dark/60 border border-notion-border dark:border-notion-border-dark px-2 py-2.5 text-center">
+              <div class="text-lg font-bold text-notion-text dark:text-notion-text-dark leading-tight">{{ backupStats.questionCount }}</div>
+              <div class="text-[11px] text-notion-muted dark:text-notion-muted-dark mt-0.5">题目</div>
+            </div>
+            <div class="rounded-btn bg-white dark:bg-notion-surface-dark/60 border border-notion-border dark:border-notion-border-dark px-2 py-2.5 text-center">
+              <div class="text-lg font-bold text-notion-text dark:text-notion-text-dark leading-tight">{{ backupStats.categoryCount }}</div>
+              <div class="text-[11px] text-notion-muted dark:text-notion-muted-dark mt-0.5">分类</div>
+            </div>
+            <div class="rounded-btn bg-white dark:bg-notion-surface-dark/60 border border-notion-border dark:border-notion-border-dark px-2 py-2.5 text-center">
+              <div class="text-lg font-bold text-notion-text dark:text-notion-text-dark leading-tight">{{ backupStats.trashCount }}</div>
+              <div class="text-[11px] text-notion-muted dark:text-notion-muted-dark mt-0.5">回收站</div>
+            </div>
+          </div>
+
+          <!-- Type distribution -->
+          <div v-if="backupStats.typeCounts.length">
+            <p class="text-[11px] font-medium text-notion-muted dark:text-notion-muted-dark mb-2">题型分布</p>
+            <div class="space-y-1.5">
+              <div v-for="t in backupStats.typeCounts" :key="t.type" class="flex items-center gap-2">
+                <span class="text-[11px] text-notion-muted dark:text-notion-muted-dark w-12 flex-shrink-0">{{ t.type }}</span>
+                <div class="flex-1 h-1.5 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
+                  <div class="h-full rounded-full bg-blue-500 dark:bg-blue-400" :style="{ width: (t.count / backupTypeMax * 100) + '%' }"></div>
+                </div>
+                <span class="text-[11px] font-medium text-notion-text dark:text-notion-text-dark w-10 text-right flex-shrink-0">{{ t.count }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Top categories -->
+          <div v-if="backupStats.topCategories.length" class="mt-4 pt-4 border-t border-notion-border dark:border-notion-border-dark">
+            <p class="text-[11px] font-medium text-notion-muted dark:text-notion-muted-dark mb-2">题目最多的分类</p>
+            <div class="space-y-1.5">
+              <div v-for="c in backupStats.topCategories" :key="c.name" class="flex items-center gap-2">
+                <span class="text-[11px] text-notion-muted dark:text-notion-muted-dark truncate flex-1" :title="c.name">{{ c.name }}</span>
+                <div class="w-24 h-1.5 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden flex-shrink-0">
+                  <div class="h-full rounded-full bg-indigo-500 dark:bg-indigo-400" :style="{ width: (c.count / backupCategoryMax * 100) + '%' }"></div>
+                </div>
+                <span class="text-[11px] font-medium text-notion-text dark:text-notion-text-dark w-10 text-right flex-shrink-0">{{ c.count }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <button @click="downloadBackup" class="btn-primary w-full justify-center mt-auto">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
           </svg>
           下载数据库备份
         </button>
-      </div>
+          </div>
 
-      <!-- Export JSON -->
-      <div class="card">
-        <div class="flex items-center gap-3 mb-4">
-          <div class="w-10 h-10 rounded-btn bg-green-50 dark:bg-green-900/30 flex items-center justify-center">
-            <svg class="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-            </svg>
-          </div>
-          <div>
-            <h2 class="text-base font-semibold text-notion-text dark:text-notion-text-dark">导出 JSON</h2>
-            <p class="text-xs text-notion-muted dark:text-notion-muted-dark">按条件导出题目为 JSON 文件</p>
-          </div>
-        </div>
-        <div class="space-y-3 mb-4">
-          <div>
-            <label class="block text-xs font-medium text-notion-muted dark:text-notion-muted-dark mb-1">题型筛选（可多选）</label>
-            <div class="flex flex-wrap gap-1.5">
-              <button
-                v-for="t in QUESTION_TYPES"
-                :key="t"
-                type="button"
-                @click="exportFilters.types.includes(t) ? exportFilters.types.splice(exportFilters.types.indexOf(t), 1) : exportFilters.types.push(t)"
-                :class="[
-                  'px-2.5 py-1 rounded-btn text-xs font-medium border transition-colors',
-                  exportFilters.types.includes(t)
-                    ? 'border-notion-accent dark:border-notion-accent-dark bg-notion-accent/10 dark:bg-notion-accent-dark/15 text-notion-accent dark:text-notion-accent-dark'
-                    : 'border-notion-border dark:border-notion-border-dark text-notion-muted dark:text-notion-muted-dark hover:border-gray-300 dark:hover:border-gray-600'
-                ]"
-              >{{ t }}</button>
+          <!-- Export / Import JSON -->
+          <div class="flex flex-col gap-6 lg:border-l lg:border-notion-border dark:lg:border-notion-border-dark lg:pl-6">
+            <div>
+            <div class="flex items-center gap-3 mb-4">
+              <div class="w-10 h-10 rounded-btn bg-green-50 dark:bg-green-900/30 flex items-center justify-center">
+                <svg class="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+              </div>
+              <div>
+                <h2 class="text-base font-semibold text-notion-text dark:text-notion-text-dark">导出 JSON</h2>
+                <p class="text-xs text-notion-muted dark:text-notion-muted-dark">按条件导出题目为 JSON 文件</p>
+              </div>
             </div>
-          </div>
-          <div>
-            <label class="block text-xs font-medium text-notion-muted dark:text-notion-muted-dark mb-1">分类筛选</label>
-            <SearchableSelect
-              :modelValue="exportFilters.category"
-              @update:modelValue="(v) => exportFilters.category = v"
-              :options="categories.map(c => ({ label: c.name, value: c.name }))"
-              allLabel="全部分类"
-              placeholder="全部分类"
-            />
-          </div>
-        </div>
-        <button @click="exportJson" class="btn-primary w-full justify-center">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
-          </svg>
-          导出 JSON
-        </button>
-      </div>
-
-      <!-- Import JSON -->
-      <div class="card lg:col-span-2">
-        <div class="flex items-center gap-3 mb-4">
-          <div class="w-10 h-10 rounded-btn bg-purple-50 dark:bg-purple-900/30 flex items-center justify-center">
-            <svg class="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
-            </svg>
-          </div>
-          <div>
-            <h2 class="text-base font-semibold text-notion-text dark:text-notion-text-dark">导入 JSON</h2>
-            <p class="text-xs text-notion-muted dark:text-notion-muted-dark">从 JSON 文件导入题目，重复和答案冲突会逐条展示</p>
-          </div>
-        </div>
-        <div class="space-y-3">
-          <div class="flex items-center gap-3">
-            <label class="btn-secondary cursor-pointer">
+            <div class="space-y-3 mb-4">
+              <div>
+                <label class="block text-xs font-medium text-notion-muted dark:text-notion-muted-dark mb-1">题型筛选（可多选）</label>
+                <div class="flex flex-wrap gap-1.5">
+                  <button
+                    v-for="t in QUESTION_TYPES"
+                    :key="t"
+                    type="button"
+                    @click="exportFilters.types.includes(t) ? exportFilters.types.splice(exportFilters.types.indexOf(t), 1) : exportFilters.types.push(t)"
+                    :class="[
+                      'px-2.5 py-1 rounded-btn text-xs font-medium border transition-colors',
+                      exportFilters.types.includes(t)
+                        ? 'border-notion-accent dark:border-notion-accent-dark bg-notion-accent/10 dark:bg-notion-accent-dark/15 text-notion-accent dark:text-notion-accent-dark'
+                        : 'border-notion-border dark:border-notion-border-dark text-notion-muted dark:text-notion-muted-dark hover:border-gray-300 dark:hover:border-gray-600'
+                    ]"
+                  >{{ t }}</button>
+                </div>
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-notion-muted dark:text-notion-muted-dark mb-1">分类筛选</label>
+                <SearchableSelect
+                  :modelValue="exportFilters.category"
+                  @update:modelValue="(v) => exportFilters.category = v"
+                  :options="categories.map(c => ({ label: c.name, value: c.name }))"
+                  allLabel="全部分类"
+                  placeholder="全部分类"
+                />
+              </div>
+            </div>
+            <button @click="exportJson" class="btn-primary w-full justify-center">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
               </svg>
-              选择文件
-              <input type="file" accept=".json" @change="handleFileUpload" class="hidden" />
-            </label>
-            <span class="text-xs text-notion-muted dark:text-notion-muted-dark">或直接粘贴 JSON 数据</span>
-          </div>
-          <textarea
-            v-model="importText"
-            rows="8"
-            class="input-field font-mono text-xs"
-            :class="isDragging ? 'ring-2 ring-notion-accent/40 dark:ring-notion-accent-dark/40 border-notion-accent dark:border-notion-accent-dark' : ''"
-            placeholder='[{"type":"单选题","content":"题目内容","options":["A","B","C","D"],"answers":["A"],"category":"默认"}]'
-            @dragover="onDragOver"
-            @dragleave="onDragLeave"
-            @drop="onDrop"
-          />
-          <div class="flex justify-end">
-            <button @click="importJson" :disabled="importing || !importText.trim()" class="btn-primary">
-              <svg v-if="importing" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-              </svg>
-              {{ importing ? '导入中...' : '开始导入' }}
+              导出 JSON
             </button>
+            </div>
+
+            <div class="border-t border-notion-border dark:border-notion-border-dark"></div>
+
+            <!-- Import JSON -->
+            <div class="flex-1 flex flex-col">
+              <div class="flex items-center gap-3 mb-4">
+                <div class="w-10 h-10 rounded-btn bg-purple-50 dark:bg-purple-900/30 flex items-center justify-center">
+                  <svg class="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                  </svg>
+                </div>
+                <div>
+                  <h2 class="text-base font-semibold text-notion-text dark:text-notion-text-dark">导入 JSON</h2>
+                  <p class="text-xs text-notion-muted dark:text-notion-muted-dark">从 JSON 文件导入题目，重复和答案冲突会逐条展示</p>
+                </div>
+              </div>
+              <div class="space-y-3 flex-1 flex flex-col">
+              <div class="flex items-center gap-3">
+                <label class="btn-secondary cursor-pointer">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                  </svg>
+                  选择文件
+                  <input type="file" accept=".json" @change="handleFileUpload" class="hidden" />
+                </label>
+                <span class="text-xs text-notion-muted dark:text-notion-muted-dark">或直接粘贴 JSON 数据</span>
+              </div>
+              <textarea
+                v-model="importText"
+                rows="8"
+                class="input-field font-mono text-xs flex-1 min-h-[160px] resize-none"
+                :class="isDragging ? 'ring-2 ring-notion-accent/40 dark:ring-notion-accent-dark/40 border-notion-accent dark:border-notion-accent-dark' : ''"
+                placeholder='[{"type":"单选题","content":"题目内容","options":["A","B","C","D"],"answers":["A"],"category":"默认"}]'
+                @dragover="onDragOver"
+                @dragleave="onDragLeave"
+                @drop="onDrop"
+              />
+              <div class="flex justify-end">
+                <button @click="importJson" :disabled="importing || !importText.trim()" class="btn-primary">
+                  <svg v-if="importing" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                  </svg>
+                  {{ importing ? '导入中...' : '开始导入' }}
+                </button>
+              </div>
+            </div>
+            </div>
           </div>
         </div>
       </div>

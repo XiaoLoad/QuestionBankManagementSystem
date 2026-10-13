@@ -34,6 +34,33 @@ module.exports = function (getDb, { md5, safeParse, sendError, localNow }) {
     } catch (err) { sendError(res, err, 'GET /api/backup'); }
   });
 
+  // GET /api/backup/stats — data overview contained in the backup
+  router.get('/stats', (req, res) => {
+    try {
+      const db = getDb();
+      const count = (sql, ...params) => db.prepare(sql).get(...params).cnt;
+
+      const questionCount = count("SELECT COUNT(*) as cnt FROM data_questions WHERE deleted_at IS NULL");
+      const trashCount = count("SELECT COUNT(*) as cnt FROM data_questions WHERE deleted_at IS NOT NULL");
+      const categoryCount = count("SELECT COUNT(*) as cnt FROM data_categories");
+
+      const typeCounts = VALID_TYPES.map(type => ({
+        type,
+        count: count("SELECT COUNT(*) as cnt FROM data_questions WHERE deleted_at IS NULL AND type = ?", type),
+      })).filter(t => t.count > 0);
+
+      const topCategories = db
+        .prepare(
+          `SELECT COALESCE(NULLIF(category, ''), '未分类') AS name, COUNT(*) AS count
+           FROM data_questions WHERE deleted_at IS NULL
+           GROUP BY name ORDER BY count DESC LIMIT 5`,
+        )
+        .all();
+
+      res.json({ questionCount, trashCount, categoryCount, typeCounts, topCategories });
+    } catch (err) { sendError(res, err, 'GET /api/backup/stats'); }
+  });
+
   // POST /api/backup/export — export as JSON
   router.post('/export', (req, res) => {
     try {
