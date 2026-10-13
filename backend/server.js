@@ -519,7 +519,12 @@ const questionsRouter = require("./routes/questions")(getDb, helpers, auth);
 const trashRouter = require("./routes/trash")(getDb, helpers, auth);
 const statsRouter = require("./routes/stats")(getDb, helpers, auth);
 const categoriesRouter = require("./routes/categories")(getDb, helpers, auth);
-const backupRouter = require("./routes/backup")(getDb, helpers, auth);
+const backupRouter = require("./routes/backup")(
+  getDb,
+  helpers,
+  auth,
+  () => config.currentPath,
+);
 const aiRouter = require("./routes/ai")(getDb, helpers, auth);
 const duplicatesRouter = require("./routes/duplicates")(getDb, helpers, auth);
 const databaseRouter = require("./routes/database")(

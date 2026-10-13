@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const { VALID_TYPES } = require('../validate');
 
-module.exports = function (getDb, { md5, safeParse, sendError, localNow }) {
+module.exports = function (getDb, { md5, safeParse, sendError, localNow }, auth, getCurrentDbPath) {
   const router = express.Router();
 
   // Strip option letter prefixes: "C.教育职能" → "教育职能"
@@ -15,13 +15,15 @@ module.exports = function (getDb, { md5, safeParse, sendError, localNow }) {
     return String(val).replace(/^[A-Za-z][.\s、·:：]+/, '').trim()
   }
 
-  // GET /api/backup — download database file
+  // GET /api/backup — download current database file
   router.get('/', (req, res) => {
     try {
-      const dbPath = path.join(__dirname, '..', 'default.db');
-      if (!fs.existsSync(dbPath)) {
+      const dbPath = getCurrentDbPath();
+      if (!dbPath || !fs.existsSync(dbPath)) {
         return res.status(404).json({ error: '数据库文件不存在' });
       }
+      // 先将 WAL 内容合并进主库文件，保证备份包含最新数据
+      try { getDb().pragma('wal_checkpoint(TRUNCATE)'); } catch {}
       const timestamp = localNow().replace(/[:.]/g, '-').substring(0, 19);
       res.setHeader('Content-Disposition', `attachment; filename="question-bank-backup-${timestamp}.db"`);
       res.setHeader('Content-Type', 'application/octet-stream');
