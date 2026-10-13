@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, onActivated, watch, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useApi } from '@/composables/useApi'
 import { useAuthStore } from '@/stores/auth'
@@ -106,6 +106,22 @@ const categoryScoreMap = computed(() => {
   return map
 })
 
+// 把路由 query 里的分类写入筛选条件，返回是否真的发生了变化。
+// 组件被 KeepAlive 缓存，从分类页再次进入只触发 onActivated 而非
+// onMounted，因此 query 变化要单独监听，否则跳转后不会自动筛选。
+function syncCategoryFromQuery() {
+  const cat = route.query.category
+  if (!cat || filters.category === cat) return false
+  filters.category = cat
+  filters.page = 1
+  return true
+}
+
+// 幂等：已应用过同一分类则不重复请求
+function reloadByCategoryQuery() {
+  if (syncCategoryFromQuery()) loadQuestions()
+}
+
 onMounted(() => {
   // Restore saved state if returning from detail page
   const saved = questionsPageStore.restore()
@@ -113,9 +129,7 @@ onMounted(() => {
     Object.assign(filters, saved.filters)
   }
   // Apply category from route query (e.g. from Categories page click)
-  if (route.query.category) {
-    filters.category = route.query.category
-  }
+  syncCategoryFromQuery()
   loadQuestions()
   loadCategories()
 
@@ -124,6 +138,11 @@ onMounted(() => {
     api.getTrashCount().then(d => trashStore.setCount(d.count || 0)).catch(() => {})
   }
 })
+
+// KeepAlive 缓存命中时组件不会重新挂载：onActivated 覆盖再次进入，
+// watch 覆盖停留在本页时 query 变化，两者都靠上面的幂等判断去重
+onActivated(reloadByCategoryQuery)
+watch(() => route.query.category, reloadByCategoryQuery)
 
 // Filter changes
 function onFilterChange() {
