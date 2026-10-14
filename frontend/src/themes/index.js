@@ -167,6 +167,13 @@ export function getThemeById(themeId) {
 }
 
 /**
+ * 已知主题 id，用于精确移除旧主题 class。
+ * 不能用 /theme-\w+/g 通配：那会把过渡用的 theme-transitioning 一起抹掉，
+ * 导致主题色切换完全没有过渡效果。
+ */
+const THEME_IDS = Object.keys(themes);
+
+/**
  * 应用主题到 DOM
  * @param {string} themeId - 主题 ID
  * @param {boolean} isDark - 是否暗色模式
@@ -176,8 +183,8 @@ export function applyTheme(themeId, isDark) {
   const colors = isDark ? theme.dark : theme.light;
   const root = document.documentElement;
 
-  // 设置主题 class
-  root.className = root.className.replace(/theme-\w+/g, "");
+  // 仅移除主题色 class，保留 dark / theme-transitioning 等运行时 class
+  root.classList.remove(...THEME_IDS.map((id) => `theme-${id}`));
   root.classList.add(`theme-${themeId}`);
 
   // 应用 CSS 变量
