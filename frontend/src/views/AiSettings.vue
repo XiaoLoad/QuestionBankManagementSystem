@@ -323,7 +323,7 @@ function cancelModelPicker() {
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
             </svg>
           </button>
-          <div v-if="showPresetMenu" class="absolute right-0 sm:left-auto top-full mt-1 w-56 bg-white dark:bg-gray-800 rounded-card shadow-lg border border-notion-border dark:border-notion-border-dark py-1 z-10 max-h-60 overflow-y-auto">
+          <div v-if="showPresetMenu" class="absolute left-0 sm:left-auto sm:right-0 top-full mt-1 w-56 max-w-[calc(100vw-2rem)] bg-white dark:bg-gray-800 rounded-card shadow-lg border border-notion-border dark:border-notion-border-dark py-1 z-10 max-h-60 overflow-y-auto">
             <button
               @click="openAddForm(); showPresetMenu = false"
               class="w-full text-left px-4 py-2 text-sm text-notion-text dark:text-notion-text-dark hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"

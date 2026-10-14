@@ -10,7 +10,7 @@ const confirm = useConfirmStore()
       <div v-if="confirm.visible" class="fixed inset-0 z-[9998] flex items-center justify-center p-4">
         <div class="absolute inset-0 bg-black/50" @click="confirm.cancel" />
         <Transition name="modal-content" appear>
-          <div class="relative bg-white dark:bg-gray-800 rounded-card shadow-xl border border-notion-border dark:border-notion-border-dark max-w-md w-full p-6">
+          <div class="relative bg-white dark:bg-gray-800 rounded-card shadow-xl border border-notion-border dark:border-notion-border-dark max-w-md w-full p-4 sm:p-6">
             <h3 class="text-lg font-semibold text-notion-text dark:text-notion-text-dark mb-2">{{ confirm.title }}</h3>
             <p class="text-sm text-notion-muted dark:text-notion-muted-dark mb-6">{{ confirm.message }}</p>
             <div class="flex justify-end gap-3">

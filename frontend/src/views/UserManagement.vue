@@ -30,7 +30,7 @@
       </div>
 
       <!-- PC 端：表格布局 -->
-      <div v-if="!loading && users.length > 0" class="hidden sm:block overflow-x-auto">
+      <div v-if="!loading && users.length > 0" class="hidden lg:block overflow-x-auto">
         <table class="w-full">
           <thead>
             <tr class="border-b border-notion-border dark:border-notion-border-dark bg-gray-50 dark:bg-gray-800/50">
@@ -120,7 +120,7 @@
       </div>
 
       <!-- 移动端：卡片布局 -->
-      <div v-if="!loading && users.length > 0" class="sm:hidden divide-y divide-notion-border dark:divide-notion-border-dark">
+      <div v-if="!loading && users.length > 0" class="lg:hidden divide-y divide-notion-border dark:divide-notion-border-dark">
         <div v-for="user in users" :key="user.id" class="p-3">
           <div class="flex items-start justify-between mb-2">
             <div>

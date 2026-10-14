@@ -572,7 +572,7 @@ function getBoolClass(val) {
 </script>
 
 <template>
-  <div class="h-full flex flex-col">
+  <div class="lg:h-full flex flex-col">
     <!-- Header -->
     <div class="flex-shrink-0 mb-4 sm:mb-6">
       <h1
@@ -973,10 +973,10 @@ function getBoolClass(val) {
         </div>
       </div>
 
-      <!-- Question card -->
-      <div class="card flex-1 min-h-0 flex flex-col overflow-hidden p-3 sm:p-5">
+      <!-- 桌面：题干区内部滚动占满剩余高度；移动端与平板：随页面自然延伸 -->
+      <div class="card lg:flex-1 lg:min-h-0 flex flex-col overflow-hidden p-3 sm:p-5">
         <!-- Scrollable content -->
-        <div class="flex-1 overflow-y-auto pr-1">
+        <div class="lg:flex-1 lg:overflow-y-auto lg:pr-1">
           <div class="flex items-center gap-1.5 sm:gap-2 mb-2 sm:mb-3">
             <span class="badge badge-type text-xs">{{
               currentQuestion.type
@@ -1263,7 +1263,7 @@ function getBoolClass(val) {
         </button>
         <div
           ref="navigatorRef"
-          class="flex-1 overflow-x-auto scrollbar-hide"
+          class="flex-1 min-w-0 overflow-x-auto scrollbar-hide"
           @wheel.prevent="onNavigatorWheel"
         >
           <div class="flex gap-1 sm:gap-1.5">

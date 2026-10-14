@@ -304,7 +304,7 @@ async function handleResetChangelog() {
                 <p v-if="!footerHitokotoTypes" class="text-[10px] text-red-500">请至少选择一种类型</p>
 
                 <!-- 缓存时长 -->
-                <div class="flex items-center gap-3 pt-1">
+                <div class="flex flex-wrap items-center gap-3 pt-1">
                   <span class="text-xs text-notion-muted dark:text-notion-muted-dark">缓存时长</span>
                   <input
                     v-model.number="footerHitokotoCacheMinutes"

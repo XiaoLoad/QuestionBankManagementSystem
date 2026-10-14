@@ -634,25 +634,25 @@ onMounted(async () => {
         </div>
       </div>
 
-      <!-- Log Table -->
-      <div class="overflow-x-auto -mx-5 px-5">
+      <!-- 桌面（≥1024px）：表格布局 -->
+      <div class="hidden lg:block">
         <div v-if="logsLoading" class="text-center py-8 text-sm text-notion-muted dark:text-notion-muted-dark">
           加载中...
         </div>
         <div v-else-if="logs.length === 0" class="text-center py-8 text-sm text-notion-muted dark:text-notion-muted-dark">
           暂无查询记录
         </div>
-        <div v-else class="max-h-[400px] sm:max-h-[480px] overflow-y-auto">
+        <div v-else class="max-h-[480px] overflow-y-auto overflow-x-auto">
         <table class="w-full text-sm">
           <thead class="sticky top-0 z-10 bg-white dark:bg-gray-800">
             <tr class="border-b border-notion-border dark:border-notion-border-dark">
               <th class="text-left py-2 px-2 sm:px-3 font-medium text-notion-muted dark:text-notion-muted-dark text-xs">时间</th>
               <th class="text-left py-2 px-2 sm:px-3 font-medium text-notion-muted dark:text-notion-muted-dark text-xs">来源</th>
               <th class="text-left py-2 px-2 sm:px-3 font-medium text-notion-muted dark:text-notion-muted-dark text-xs">题目</th>
-              <th class="hidden sm:table-cell text-left py-2 px-3 font-medium text-notion-muted dark:text-notion-muted-dark text-xs">题型</th>
+              <th class="text-left py-2 px-3 font-medium text-notion-muted dark:text-notion-muted-dark text-xs">题型</th>
               <th class="text-left py-2 px-2 sm:px-3 font-medium text-notion-muted dark:text-notion-muted-dark text-xs">结果</th>
               <th class="text-left py-2 px-2 sm:px-3 font-medium text-notion-muted dark:text-notion-muted-dark text-xs">答案</th>
-              <th class="hidden sm:table-cell text-right py-2 px-3 font-medium text-notion-muted dark:text-notion-muted-dark text-xs">耗时</th>
+              <th class="text-right py-2 px-3 font-medium text-notion-muted dark:text-notion-muted-dark text-xs">耗时</th>
             </tr>
           </thead>
           <tbody>
@@ -671,7 +671,7 @@ onMounted(async () => {
               <td class="py-2.5 px-2 sm:px-3 max-w-[120px] sm:max-w-[200px]">
                 <span class="text-xs sm:text-sm text-notion-text dark:text-notion-text-dark truncate block" :title="log.content">{{ truncate(log.content, 15) }}</span>
               </td>
-              <td class="hidden sm:table-cell py-2.5 px-3 text-notion-muted dark:text-notion-muted-dark text-xs">{{ log.type || '-' }}</td>
+              <td class="py-2.5 px-3 text-notion-muted dark:text-notion-muted-dark text-xs">{{ log.type || '-' }}</td>
               <td class="py-2.5 px-2 sm:px-3">
                 <span :class="['inline-block px-1.5 sm:px-2 py-0.5 rounded text-xs font-medium', resultColor[log.result]]">
                   {{ resultLabel[log.result] || log.result }}
@@ -680,7 +680,7 @@ onMounted(async () => {
               <td class="py-2.5 px-2 sm:px-3 max-w-[100px] sm:max-w-[200px]">
                 <span class="text-xs text-notion-text dark:text-notion-text-dark truncate block" :title="log.answer">{{ truncate(log.answer, 10) || '-' }}</span>
               </td>
-              <td class="hidden sm:table-cell py-2.5 px-3 text-right whitespace-nowrap">
+              <td class="py-2.5 px-3 text-right whitespace-nowrap">
                 <span :class="[
                   'text-xs',
                   log.cost_ms < 100 ? 'text-emerald-600 dark:text-emerald-400' :
@@ -693,6 +693,43 @@ onMounted(async () => {
             </tr>
           </tbody>
         </table>
+        </div>
+      </div>
+
+      <!-- 移动端与平板（<1024px）：卡片布局 -->
+      <div class="lg:hidden">
+        <div v-if="logsLoading" class="text-center py-8 text-sm text-notion-muted dark:text-notion-muted-dark">
+          加载中...
+        </div>
+        <div v-else-if="logs.length === 0" class="text-center py-8 text-sm text-notion-muted dark:text-notion-muted-dark">
+          暂无查询记录
+        </div>
+        <div v-else class="max-h-[480px] overflow-y-auto space-y-2">
+          <div
+            v-for="log in logs"
+            :key="log.id"
+            class="rounded-card border border-notion-border dark:border-notion-border-dark bg-notion-surface dark:bg-notion-surface-dark p-3"
+          >
+            <div class="flex items-center justify-between gap-2 mb-1.5">
+              <span class="text-xs font-medium text-notion-text dark:text-notion-text-dark">{{ sourceLabel[log.source] || log.source }}</span>
+              <span :class="['inline-block px-1.5 py-0.5 rounded text-xs font-medium flex-shrink-0', resultColor[log.result]]">
+                {{ resultLabel[log.result] || log.result }}
+              </span>
+            </div>
+            <p class="text-xs text-notion-text dark:text-notion-text-dark mb-1.5" :title="log.content">
+              {{ truncate(log.content, 30) }}
+            </p>
+            <div class="flex items-center justify-between gap-2 text-[11px] text-notion-muted dark:text-notion-muted-dark">
+              <span class="truncate">{{ truncate(log.answer, 12) || '-' }}</span>
+              <span class="flex-shrink-0" :class="[
+                log.cost_ms < 100 ? 'text-emerald-600 dark:text-emerald-400' :
+                log.cost_ms < 2000 ? 'text-amber-600 dark:text-amber-400' :
+                'text-red-600 dark:text-red-400'
+              ]">
+                {{ log.cost_ms < 1000 ? log.cost_ms + 'ms' : (log.cost_ms / 1000).toFixed(1) + 's' }}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
     </div>

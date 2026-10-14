@@ -888,7 +888,7 @@ async function batchDeleteByDate() {
 
     <!-- DB Upload Naming Dialog -->
     <div v-if="showUploadDialog" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40" @click.self="cancelUpload">
-      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md p-6">
+      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md p-4 sm:p-6">
         <h3 class="text-base font-semibold text-notion-text dark:text-notion-text-dark mb-2">上传数据库</h3>
         <p class="text-sm text-notion-muted dark:text-notion-muted-dark mb-4">
           文件：<strong class="text-notion-text dark:text-notion-text-dark">{{ pendingDbFile?.name }}</strong>

@@ -289,7 +289,7 @@ const hasActiveFilters = computed(() => {
 </script>
 
 <template>
-  <div class="h-full flex flex-col">
+  <div class="lg:h-full flex flex-col">
     <!-- Header (fixed) -->
     <div class="flex-shrink-0 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-3 sm:mb-4">
       <div>
@@ -313,7 +313,7 @@ const hasActiveFilters = computed(() => {
         </div>
         <button
           @click="filtersExpanded = !filtersExpanded"
-          class="sm:hidden p-2 rounded-btn border border-notion-border dark:border-notion-border-dark text-notion-muted dark:text-notion-muted-dark hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors relative"
+          class="lg:hidden p-2 rounded-btn border border-notion-border dark:border-notion-border-dark text-notion-muted dark:text-notion-muted-dark hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors relative min-h-[44px] min-w-[44px] flex items-center justify-center"
           :class="hasActiveFilters ? 'border-notion-accent dark:border-notion-accent-dark' : ''"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -323,8 +323,8 @@ const hasActiveFilters = computed(() => {
         </button>
       </div>
 
-      <!-- 其他筛选条件：PC 端始终显示，移动端可折叠 -->
-      <div :class="['mt-3', filtersExpanded ? 'block' : 'hidden sm:block']">
+      <!-- 其他筛选条件：移动端可折叠，≥1024px 始终显示 -->
+      <div :class="['mt-3', filtersExpanded ? 'block' : 'hidden lg:block']">
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <div>
             <label class="block text-xs font-medium text-notion-muted dark:text-notion-muted-dark mb-1.5">题型</label>
@@ -387,8 +387,8 @@ const hasActiveFilters = computed(() => {
       </button>
     </div>
 
-    <!-- Table / Card list (scrollable, fills remaining space) -->
-    <div class="flex-1 min-h-0 card p-0 overflow-hidden flex flex-col">
+    <!-- 桌面（≥1024px）：表格占据剩余高度并内部滚动；移动端与平板：随页面自然延伸 -->
+    <div class="lg:flex-1 lg:min-h-0 card p-0 overflow-hidden flex flex-col">
       <!-- Loading Skeleton -->
       <div v-if="loading" class="p-4 space-y-3">
         <div v-for="i in 6" :key="i" class="flex items-center gap-4 py-3 border-b border-notion-border dark:border-notion-border-dark last:border-0">
@@ -402,7 +402,7 @@ const hasActiveFilters = computed(() => {
       </div>
 
       <!-- Empty -->
-      <div v-else-if="questions.length === 0" class="flex-1 flex flex-col items-center justify-center p-4">
+      <div v-else-if="questions.length === 0" class="lg:flex-1 flex flex-col items-center justify-center p-4">
         <svg class="w-10 h-10 sm:w-12 sm:h-12 text-notion-muted dark:text-notion-muted-dark mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
         </svg>
@@ -412,8 +412,8 @@ const hasActiveFilters = computed(() => {
 
       <!-- Content -->
       <template v-else>
-        <!-- PC 端：表格布局 -->
-        <div class="hidden sm:block flex-1 overflow-y-auto">
+        <!-- PC 端：表格布局（≥1024px） -->
+        <div class="hidden lg:block flex-1 overflow-x-auto overflow-y-auto">
           <table class="w-full text-sm">
             <thead class="sticky top-0 z-10 bg-notion-surface dark:bg-notion-surface-dark">
               <tr class="border-b border-notion-border dark:border-notion-border-dark">
@@ -480,10 +480,10 @@ const hasActiveFilters = computed(() => {
           </table>
         </div>
 
-        <!-- 移动端：卡片布局 -->
-        <div class="sm:hidden flex-1 overflow-y-auto">
-          <!-- 移动端全选 -->
-          <div class="sticky top-0 z-10 flex items-center gap-2 px-3 py-2 bg-notion-surface dark:bg-notion-surface-dark border-b border-notion-border dark:border-notion-border-dark">
+        <!-- 移动端与平板：卡片随页面自然延伸 -->
+        <div class="lg:hidden">
+          <!-- 移动端全选（桌面端表格自带表头全选） -->
+          <div class="lg:sticky lg:top-0 z-10 flex items-center gap-2 px-3 py-2 bg-notion-surface dark:bg-notion-surface-dark border-b border-notion-border dark:border-notion-border-dark">
             <input
               type="checkbox"
               :checked="allSelected"

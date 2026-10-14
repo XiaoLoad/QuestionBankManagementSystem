@@ -207,7 +207,7 @@ async function doDelete() {
 </script>
 
 <template>
-  <div class="h-full flex flex-col">
+  <div class="lg:h-full flex flex-col">
     <!-- Header (fixed) -->
     <div class="flex-shrink-0 mb-8">
       <h1 class="text-2xl font-bold text-notion-text dark:text-notion-text-dark">分类管理</h1>
@@ -282,8 +282,8 @@ async function doDelete() {
       </div>
     </div>
 
-    <!-- List card (fills remaining space) -->
-    <div class="flex-1 min-h-0 card p-0 overflow-hidden flex flex-col">
+    <!-- 桌面（≥1024px）：列表占据剩余高度并内部滚动；移动端与平板：随页面自然延伸 -->
+    <div class="lg:flex-1 lg:min-h-0 card p-0 overflow-hidden flex flex-col">
       <!-- Loading Skeleton -->
       <div v-if="loading" class="p-4 space-y-3">
         <div v-for="i in 5" :key="i" class="flex items-center gap-4 p-4 border-b border-notion-border dark:border-notion-border-dark last:border-0">
@@ -297,7 +297,7 @@ async function doDelete() {
       </div>
 
       <!-- Empty -->
-      <div v-else-if="filteredCategories.length === 0" class="flex-1 flex flex-col items-center justify-center">
+      <div v-else-if="filteredCategories.length === 0" class="lg:flex-1 flex flex-col items-center justify-center py-12">
         <svg class="w-12 h-12 text-notion-muted dark:text-notion-muted-dark mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
         </svg>
@@ -306,7 +306,7 @@ async function doDelete() {
 
       <!-- Scrollable list -->
       <template v-else>
-        <div class="flex-1 overflow-y-auto">
+        <div class="lg:flex-1 lg:overflow-y-auto">
           <div
             v-for="(cat, idx) in paginatedCategories"
             :key="cat.id"

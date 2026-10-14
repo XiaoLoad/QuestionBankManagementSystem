@@ -17,12 +17,12 @@ const colorMap = {
 </script>
 
 <template>
-  <div class="fixed z-[9999] space-y-2 max-w-sm w-full pointer-events-none toast-container">
+  <div class="fixed z-[9999] space-y-2 w-full max-w-[calc(100vw-2rem)] sm:max-w-sm pointer-events-none toast-container">
     <TransitionGroup name="toast">
       <div
         v-for="t in toast.toasts"
         :key="t.id"
-        class="pointer-events-auto flex items-start gap-3 bg-white dark:bg-gray-800 rounded-card shadow-lg border border-notion-border dark:border-notion-border-dark p-4 toast-enter"
+        class="pointer-events-auto flex items-start gap-3 bg-white dark:bg-gray-800 rounded-card shadow-lg border border-notion-border dark:border-notion-border-dark p-3 sm:p-4 toast-enter"
       >
         <div :class="['flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center', colorMap[t.type]]">
           <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -30,7 +30,7 @@ const colorMap = {
           </svg>
         </div>
         <p class="text-sm text-notion-text dark:text-notion-text-dark flex-1">{{ t.message }}</p>
-        <button @click="toast.remove(t.id)" class="flex-shrink-0 text-notion-muted dark:text-notion-muted-dark hover:text-notion-text dark:hover:text-notion-text-dark">
+        <button @click="toast.remove(t.id)" class="flex-shrink-0 min-w-[32px] min-h-[32px] flex items-center justify-center text-notion-muted dark:text-notion-muted-dark hover:text-notion-text dark:hover:text-notion-text-dark" :aria-label="'关闭提示'">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
           </svg>
