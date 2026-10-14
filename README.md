@@ -12,6 +12,11 @@
 
 [快速开始](#快速开始) · [核心特性](#核心特性) · [运行截图](#运行截图) · [题库对接](#题库对接) · [常见问题](#常见问题)
 
+> [!WARNING]
+> **本项目含有大量 AI 生成的代码。**
+> 项目可能存在边界情况未考虑到、以及尚未被探测到的问题。请谨慎使用，并在使用前做好数据备份。
+> 如遇到任何问题，欢迎到 [Issues](https://github.com/XiaoLoad/QuestionBankManagementSystem/issues) 提交反馈，你的反馈对项目持续改进非常重要。
+
 </div>
 
 ---
@@ -240,6 +245,8 @@ apiQueSetting:
 
 ## 常见问题
 
+**项目稳定吗？**本项目含有大量 AI 生成的代码，可能存在边界情况未考虑到、以及尚未被探测到的问题（详见文首[提示](#题库管理系统)）。建议使用前备份数据；遇到问题请到 [Issues](https://github.com/XiaoLoad/QuestionBankManagementSystem/issues) 反馈。
+
 **默认账号是什么？**`admin / admin123`。生产环境请修改密码，并通过 `JWT_SECRET` 环境变量更换签名密钥。
 
 **普通用户能做什么？**可查看仪表盘、题目和分类；管理员可管理包括用户、数据库、网站设置在内的全部功能，并通过分类可见性控制普通用户可访问的题库范围。
@@ -262,6 +269,8 @@ yarn release:patch|minor|major    # 发版（自动更新 CHANGELOG 并打 tag�
 ```
 
 提交信息遵循约定式提交（`feat` / `fix` / `ui` / `docs` / `refactor` / `chore`），CHANGELOG 由 [git-cliff](https://github.com/orhun/git-cliff) 自动生成。
+
+提交代码前请确认已通过基本验证；由于项目大量代码由 AI 生成，欢迎在 [Issues](https://github.com/XiaoLoad/QuestionBankManagementSystem/issues) 反馈复现步骤清晰的缺陷。
 
 ## 更新日志
 
