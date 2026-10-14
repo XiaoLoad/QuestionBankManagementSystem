@@ -7,6 +7,7 @@ import AppLayout from '@/components/AppLayout.vue'
 import ToastContainer from '@/components/ToastContainer.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import AiProgressBall from '@/components/AiProgressBall.vue'
+import GlobalLoader from '@/components/GlobalLoader.vue'
 
 const theme = useThemeStore()
 const router = useRouter()
@@ -36,6 +37,7 @@ const handleBallClick = () => {
     </router-view>
   </AppLayout>
   <ToastContainer />
+  <GlobalLoader />
   <ConfirmDialog />
   <AiProgressBall @click="handleBallClick" />
 </template>

@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { useLoaderStore } from '../stores/loader'
 
 const routes = [
   {
@@ -128,6 +129,22 @@ router.beforeEach((to, from, next) => {
   }
 
   next()
+})
+
+// 路由懒加载期间展示顶部进度条：to.matched 中的组件均为 () => import(...)
+router.beforeEach((to, from, next) => {
+  if (!from.name) return next() // 首次进入无过渡需求
+
+  const pending = to.matched
+    .filter((r) => typeof r.components?.default === 'function')
+    .map((r) => r.components.default())
+
+  if (!pending.length) return next()
+
+  // track 内部完成 show/hide 配对，组件全部加载完毕（含失败）后才放行
+  useLoaderStore()
+    .track(Promise.allSettled(pending))
+    .then(() => next())
 })
 
 export default router
