@@ -73,6 +73,7 @@ export function useApi() {
 
     // Stats & Refresh
     getStats: (days) => request(`/api/stats${days ? `?days=${days}` : ''}`),
+    getAdminStats: (days) => request(`/api/stats/admin${days ? `?days=${days}` : ''}`),
     refresh: () => request('/api/refresh'),
 
     // Site Settings
