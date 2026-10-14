@@ -1,6 +1,7 @@
 <script setup>
 defineOptions({ name: 'Skeleton' })
 
+// width / height 传空字符串时不写内联样式，交由外部 class 控制尺寸
 defineProps({
   width: { type: String, default: '100%' },
   height: { type: String, default: '16px' },
@@ -17,8 +18,8 @@ defineProps({
     v-if="lines === 0"
     :class="['skeleton', { 'skeleton-enhanced': enhanced }]"
     :style="{
-      width: circle ? height : width,
-      height: height,
+      width: circle ? height : width || undefined,
+      height: height || undefined,
       borderRadius: circle ? '50%' : rounded,
     }"
   />
@@ -30,7 +31,7 @@ defineProps({
       :class="['skeleton', { 'skeleton-enhanced': enhanced }]"
       :style="{
         width: i === lines ? '60%' : '100%',
-        height: height,
+        height: height || undefined,
         borderRadius: rounded,
       }"
     />

@@ -192,15 +192,16 @@ mark.search-highlight {
   0% { transform: translateX(-100%); }
   100% { transform: translateX(100%); }
 }
+/* 骨架底色跟随主题变量，切换主题色/明暗时不会脱节 */
 .skeleton {
-  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--theme-text) 5%, transparent) 25%,
+    color-mix(in srgb, var(--theme-text) 10%, transparent) 50%,
+    color-mix(in srgb, var(--theme-text) 5%, transparent) 75%
+  );
   background-size: 200% 100%;
-  animation: shimmer 1.5s infinite ease-in-out;
-  border-radius: 6px;
-}
-.dark .skeleton {
-  background: linear-gradient(90deg, #2a2a2a 25%, #333 50%, #2a2a2a 75%);
-  background-size: 200% 100%;
+  animation: shimmer 1.6s infinite ease-in-out;
 }
 .skeleton-enhanced {
   position: relative;
@@ -220,6 +221,29 @@ mark.search-highlight {
     transparent
   );
   animation: skeleton-wave 1.5s ease-in-out infinite;
+}
+
+/* 统计卡骨架：小标签 + 大数字 + 说明行，贴合真实排版 */
+.skeleton-stat {
+  background-color: var(--theme-surface);
+  padding: 1rem;
+}
+.skeleton-stat-label {
+  height: 0.625rem;
+  width: 3.5rem;
+  border-radius: 2px;
+}
+.skeleton-stat-value {
+  height: 1.75rem;
+  width: 4rem;
+  border-radius: 8px;
+  margin-top: 0.5rem;
+}
+.skeleton-stat-hint {
+  height: 0.625rem;
+  width: 5rem;
+  border-radius: 2px;
+  margin-top: 0.375rem;
 }
 
 /* 脉冲加载动画 */
