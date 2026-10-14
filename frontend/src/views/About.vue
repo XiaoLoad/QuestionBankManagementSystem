@@ -10,6 +10,7 @@ const api = useApi()
 
 const appVersion = ref('v1.0.0')
 const changelog = ref('')
+const changelogFailed = ref(false)
 const loading = ref(true)
 const showChangelog = ref(false)
 
@@ -22,8 +23,15 @@ onMounted(async () => {
   try {
     const data = await api.getSiteSettings()
     appVersion.value = data.app_version || 'v1.0.0'
-    changelog.value = data.changelog || ''
-  } catch {} finally {
+    if (data.changelog) {
+      changelog.value = data.changelog
+      changelogFailed.value = false
+    } else {
+      changelogFailed.value = true
+    }
+  } catch {
+    changelogFailed.value = true
+  } finally {
     loading.value = false
   }
 })
@@ -211,6 +219,7 @@ onMounted(() => {
       <Transition name="collapse">
         <div v-if="showChangelog" class="mt-3 max-h-[400px] overflow-y-auto pr-1">
           <div v-if="changelog" class="markdown-body text-sm text-notion-text dark:text-notion-text-dark" v-html="renderedChangelog"></div>
+          <p v-else-if="changelogFailed" class="text-sm text-red-500 dark:text-red-400 text-center py-4">获取更新日志失败，请检查网络后重试</p>
           <p v-else class="text-sm text-notion-muted dark:text-notion-muted-dark text-center py-4">暂无更新日志</p>
         </div>
       </Transition>

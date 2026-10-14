@@ -80,7 +80,6 @@ export function useApi() {
     getSiteSettings: () => request('/api/site-settings'),
     getSiteSettingsAll: () => request('/api/site-settings/all'),
     updateSiteSettings: (body) => request('/api/site-settings', { method: 'PUT', body: JSON.stringify(body) }),
-    resetChangelog: () => request('/api/site-settings/reset-changelog', { method: 'POST' }),
     getHitokoto: () => request('/api/site-settings/hitokoto'),
 
     // Quiz

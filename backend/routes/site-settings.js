@@ -23,7 +23,7 @@ module.exports = function (getDb, { sendError, localNow }, auth) {
   let hitokotoCache = null;   // { hitokoto, from, from_who }
   let hitokotoCacheTime = 0;  // 缓存时间戳
 
-  function buildSettingsResponse(settings) {
+  function buildSettingsResponse(settings, changelog) {
     return {
       site_name: settings.site_name || DEFAULTS.site_name,
       site_description: settings.site_description || DEFAULTS.site_description,
@@ -38,8 +38,18 @@ module.exports = function (getDb, { sendError, localNow }, auth) {
       footer_hitokoto_types: settings.footer_hitokoto_types || DEFAULTS.footer_hitokoto_types,
       footer_hitokoto_cache_minutes: parseInt(settings.footer_hitokoto_cache_minutes || DEFAULTS.footer_hitokoto_cache_minutes),
       app_version: settings.app_version || DEFAULTS.app_version,
-      changelog: settings.changelog || DEFAULTS.changelog,
+      changelog: changelog || settings.changelog || DEFAULTS.changelog,
     };
+  }
+
+  // 构建带更新日志的完整响应（异步），版本号优先取最新版本 tag
+  async function buildSettingsResponseWithChangelog(settings) {
+    const { content } = await getChangelog();
+    const response = buildSettingsResponse(settings, content);
+    if (githubChangelogCache && githubChangelogCache.latestTag) {
+      response.app_version = githubChangelogCache.latestTag;
+    }
+    return response;
   }
 
   // 初始更新日志内容
@@ -131,6 +141,153 @@ module.exports = function (getDb, { sendError, localNow }, auth) {
 - 数据管理：JSON 导入导出、数据库备份
 - 仪表盘：数据概览、新增趋势图表`;
 
+  // GitHub Releases 更新日志缓存
+  const GITHUB_REPO = 'XiaoLoad/QuestionBankManagementSystem';
+  const GITHUB_CHANGELOG_CACHE_MS = 30 * 60 * 1000; // 30 分钟
+  let githubChangelogCache = null;   // { content, fetchedAt }
+  let githubChangelogFetching = null; // 进行中的请求 Promise，避免并发重复拉取
+
+  // GITHUB_INSECURE_TLS=1 可跳过证书校验（默认严格校验）
+  const GITHUB_INSECURE_TLS = process.env.GITHUB_INSECURE_TLS === '1';
+
+  // 用 node:https 请求 GitHub API（支持跳过证书校验）
+  function httpsGetJson(url, headers, rejectUnauthorized) {
+    return new Promise((resolve, reject) => {
+      const req = require('https').request(url, {
+        method: 'GET',
+        headers,
+        rejectUnauthorized,
+        timeout: 8000,
+      }, (res) => {
+        // 用 Buffer 拼接，避免中文多字节 UTF-8 字符被 chunk 边界切断产生乱码
+        const chunks = [];
+        res.on('data', chunk => chunks.push(chunk));
+        res.on('end', () => {
+          try {
+            const data = Buffer.concat(chunks).toString('utf8');
+            resolve({ status: res.statusCode, json: JSON.parse(data) });
+          } catch (e) {
+            reject(new Error('响应 JSON 解析失败'));
+          }
+        });
+      });
+      req.on('timeout', () => { req.destroy(new Error('请求超时')); });
+      req.on('error', reject);
+      req.end();
+    });
+  }
+
+  // 请求 GitHub API（GITHUB_INSECURE_TLS=1 可跳过证书校验，默认严格校验）
+  async function githubApiGet(url, headers) {
+    return httpsGetJson(url, headers, !GITHUB_INSECURE_TLS);
+  }
+
+  // 从 GitHub Releases 拉取更新日志并拼接为现有格式
+  async function fetchChangelogFromGithub() {
+    // 缓存命中
+    if (githubChangelogCache && (Date.now() - githubChangelogCache.fetchedAt) < GITHUB_CHANGELOG_CACHE_MS) {
+      return githubChangelogCache.content;
+    }
+
+    // 已有进行中的请求则复用
+    if (githubChangelogFetching) {
+      return githubChangelogFetching;
+    }
+
+    githubChangelogFetching = (async () => {
+      try {
+        const headers = { 'Accept': 'application/vnd.github+json', 'User-Agent': 'question-bank-manager' };
+        if (process.env.GITHUB_TOKEN) {
+          headers['Authorization'] = `Bearer ${process.env.GITHUB_TOKEN}`;
+        }
+
+        const response = await githubApiGet(`https://api.github.com/repos/${GITHUB_REPO}/releases?per_page=50`, headers);
+
+        if (response.status !== 200) {
+          throw new Error(`GitHub API 响应 ${response.status}`);
+        }
+
+        const releases = response.json;
+        if (!Array.isArray(releases) || releases.length === 0) {
+          throw new Error('GitHub Releases 为空');
+        }
+
+        const content = releases
+          .filter(r => (r.body || '').trim())
+          .map(r => {
+            const tag = r.tag_name || '';
+            const date = (r.published_at || '').split('T')[0];
+            return `## ${tag} (${date})\n\n${r.body.trim()}`;
+          })
+          .join('\n\n---\n\n');
+
+        if (!content) {
+          throw new Error('GitHub Releases 内容为空');
+        }
+
+        // 最新 Release 的 tag 作为当前版本号
+        const latestTag = releases.find(r => (r.body || '').trim())?.tag_name || releases[0].tag_name || '';
+
+        githubChangelogCache = { content, fetchedAt: Date.now(), latestTag };
+        return content;
+      } finally {
+        githubChangelogFetching = null;
+      }
+    })();
+
+    return githubChangelogFetching;
+  }
+
+  // 读取本地 CHANGELOG.md（发版脚本自动生成，随项目发布）
+  function readLocalChangelog() {
+    const fs = require('fs');
+    const path = require('path');
+    const filePath = path.join(__dirname, '..', '..', 'CHANGELOG.md');
+    const raw = fs.readFileSync(filePath, 'utf8');
+    // 去掉文件头部说明（第一个 "## " 版本段之前的内容）
+    const idx = raw.indexOf('\n## ');
+    const content = idx >= 0 ? raw.slice(idx + 1).trim() : raw.trim();
+    if (!content) {
+      throw new Error('本地 CHANGELOG.md 内容为空');
+    }
+    // 从本地文件提取最新版本号
+    const tagMatch = content.match(/^## (v[\w.-]+)/m);
+    return { content, latestTag: tagMatch ? tagMatch[1] : '' };
+  }
+
+  // 获取更新日志：GitHub 成功则存库并显示；失败则读本地 CHANGELOG.md 并存库；再失败返回空（前端显示失败提示）
+  async function getChangelog() {
+    try {
+      const content = await fetchChangelogFromGithub();
+      saveChangelogToDb(content);
+      return { content, fromGithub: true };
+    } catch (e) {
+      console.error('[site-settings] 拉取 GitHub 更新日志失败，尝试本地 CHANGELOG.md:', e.message);
+    }
+
+    try {
+      const { content, latestTag } = readLocalChangelog();
+      saveChangelogToDb(content);
+      if (latestTag) {
+        githubChangelogCache = { content, fetchedAt: Date.now(), latestTag };
+      }
+      return { content, fromGithub: false };
+    } catch (e) {
+      console.error('[site-settings] 读取本地 CHANGELOG.md 失败:', e.message);
+      return { content: '', fromGithub: false, failed: true };
+    }
+  }
+
+  // 将更新日志写入数据库持久化
+  function saveChangelogToDb(content) {
+    try {
+      const db = getDb();
+      db.prepare('INSERT INTO site_settings (key, value, updated_at) VALUES (?, ?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at').run('changelog', content, localNow());
+    } catch (e) {
+      console.error('[site-settings] 更新日志写入数据库失败:', e.message);
+    }
+  }
+
   // 获取设置（内部辅助函数）
   function getSettingsObj() {
     const db = getDb();
@@ -162,32 +319,20 @@ module.exports = function (getDb, { sendError, localNow }, auth) {
   }
 
   // GET /api/site-settings — 公开接口，返回公告和页脚设置
-  router.get('/', (req, res) => {
+  router.get('/', async (req, res) => {
     try {
-      res.json(buildSettingsResponse(getSettingsObj()));
+      res.json(await buildSettingsResponseWithChangelog(getSettingsObj()));
     } catch (err) {
       sendError(res, err, 'GET /api/site-settings');
     }
   });
 
   // GET /api/site-settings/all — 管理员获取全部设置
-  router.get('/all', auth.adminRequired, (req, res) => {
+  router.get('/all', auth.adminRequired, async (req, res) => {
     try {
-      res.json(buildSettingsResponse(getSettingsObj()));
+      res.json(await buildSettingsResponseWithChangelog(getSettingsObj()));
     } catch (err) {
       sendError(res, err, 'GET /api/site-settings/all');
-    }
-  });
-
-  // POST /api/site-settings/reset-changelog — 管理员重置更新日志为初始内容
-  router.post('/reset-changelog', auth.adminRequired, (req, res) => {
-    try {
-      const db = getDb();
-      const now = localNow();
-      db.prepare('INSERT OR REPLACE INTO site_settings (key, value, updated_at) VALUES (?, ?, ?)').run('changelog', INITIAL_CHANGELOG, now);
-      res.json({ message: '更新日志已重置', changelog: INITIAL_CHANGELOG });
-    } catch (err) {
-      sendError(res, err, 'POST /api/site-settings/reset-changelog');
     }
   });
 
@@ -259,22 +404,6 @@ module.exports = function (getDb, { sendError, localNow }, auth) {
           stmt.run(key, val, now);
           updates.push(key);
         }
-      }
-
-      // 处理更新日志追加
-      if (req.body.is_changelog && req.body.announcement_modal) {
-        const changelogRow = db.prepare('SELECT value FROM site_settings WHERE key = ?').get('changelog');
-        const existingChangelog = changelogRow ? changelogRow.value : '';
-        const newEntry = req.body.announcement_modal.trim();
-        const dateStr = now.split(' ')[0]; // 只取日期部分
-        const version = req.body.app_version || DEFAULTS.app_version;
-
-        // 构建新的更新日志条目
-        const entry = `## ${version} (${dateStr})\n\n${newEntry}`;
-        const updatedChangelog = existingChangelog ? `${entry}\n\n---\n\n${existingChangelog}` : entry;
-
-        stmt.run('changelog', updatedChangelog, now);
-        updates.push('changelog');
       }
 
       res.json({ message: '设置已保存', updated: updates });
